@@ -52,10 +52,8 @@ func (s *Server) Add(ctx context.Context, in *pb.AddTransactionRequest) (*pb.Add
 	// Get epoch time
 	epochTime, err := utility.GetEpoch()
 	if err != nil {
-		fmt.Println(err, "epoch")
 		return nil, err
 	}
-	fmt.Println(epochTime)
 
 	// Prepare ts, msg and request body
 	ts := strconv.FormatInt(epochTime, 10)
@@ -64,7 +62,7 @@ func (s *Server) Add(ctx context.Context, in *pb.AddTransactionRequest) (*pb.Add
 		"local-id":    {in.LocalID},
 		"service":     {in.Service},
 		"amount":      {in.Amount},
-		"destination": {in.Amount},
+		"destination": {in.Phone},
 		"txn-ts":      {ts},
 		"ts":          {ts},
 		"hmac":        {hmacsha1.Generate(constants.ACCESS_TOKEN, msg)},
@@ -73,27 +71,26 @@ func (s *Server) Add(ctx context.Context, in *pb.AddTransactionRequest) (*pb.Add
 	resp, err := http.PostForm(constants.ADD_TRANSACTION_URL, data)
 	if err != nil {
 		fmt.Println(err, "post")
-		return nil, errors.New("")
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	respInBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Println(err, "respInBytes")
-		return nil, errors.New("")
+		return nil, err
 	}
 
 	var result AddTransactionResp
 	err = json.Unmarshal(respInBytes, &result)
 	if err != nil {
-		fmt.Println(err, "marshall")
-		return nil, errors.New("")
+		return nil, err
 	}
 
 	if result.Status != "SUCCESS" {
 		// TODO: add more types
 		fmt.Println(err, "is not success", result)
-		return nil, errors.New("")
+		return nil, errors.New(result.ErrorMessage)
 	}
 	return &pb.AddTransactionReply{Status: "SUCCESS"}, nil
 }
