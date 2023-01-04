@@ -1,19 +1,22 @@
 package transaction
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
 
+	pb "github.com/richxcame/gotoleg/gotoleg"
 	"github.com/richxcame/gotoleg/internal/constants"
 	"github.com/richxcame/gotoleg/internal/utility"
 	"github.com/richxcame/gotoleg/pkg/hmacsha1"
 )
 
+// TODO: make standart struct with types
 type AddTransactionResult struct {
 	Status      string `json:"status"`
 	RefNum      int64  `json:"ref-num"`
@@ -29,7 +32,11 @@ type AddTransactionResp struct {
 	Result       AddTransactionResult `json:"result,omitempty"`
 }
 
-// Add sends money to give destination
+type Server struct {
+	pb.UnimplementedTransactionServer
+}
+
+// Add sends money to given destination
 //
 // POST /api/<username>/<server>/txn/add
 // local-id - client id of transaction (max 30 chars)
@@ -41,23 +48,23 @@ type AddTransactionResp struct {
 // hmac - hmac with access token
 //
 // msg = <local-id>:<service>:<amount>:<destination>:<txn-ts>:<ts>:<username>
-func Add(phone, amount string) {
+func (s *Server) Add(ctx context.Context, in *pb.AddTransactionRequest) (*pb.AddTransactionReply, error) {
 	// Get epoch time
 	epochTime, err := utility.GetEpoch()
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err, "epoch")
+		return nil, err
 	}
+	fmt.Println(epochTime)
 
 	// Prepare ts, msg and request body
 	ts := strconv.FormatInt(epochTime, 10)
-	localID := "2"
-	service := ""
-	msg := fmt.Sprintf("%s:%s:%s:%s:%s:%s:%s", localID, service, amount, phone, ts, ts, constants.USERNAME)
+	msg := fmt.Sprintf("%s:%s:%s:%s:%s:%s:%s", in.LocalID, in.Service, in.Amount, in.Phone, ts, ts, constants.USERNAME)
 	data := url.Values{
-		"local-id":    {localID},
-		"service":     {service},
-		"amount":      {amount},
-		"destination": {phone},
+		"local-id":    {in.LocalID},
+		"service":     {in.Service},
+		"amount":      {in.Amount},
+		"destination": {in.Amount},
 		"txn-ts":      {ts},
 		"ts":          {ts},
 		"hmac":        {hmacsha1.Generate(constants.ACCESS_TOKEN, msg)},
@@ -65,23 +72,28 @@ func Add(phone, amount string) {
 
 	resp, err := http.PostForm(constants.ADD_TRANSACTION_URL, data)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err, "post")
+		return nil, errors.New("")
 	}
 	defer resp.Body.Close()
 
 	respInBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err, "respInBytes")
+		return nil, errors.New("")
 	}
 
 	var result AddTransactionResp
 	err = json.Unmarshal(respInBytes, &result)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err, "marshall")
+		return nil, errors.New("")
 	}
 
 	if result.Status != "SUCCESS" {
-		log.Fatal(err)
+		// TODO: add more types
+		fmt.Println(err, "is not success", result)
+		return nil, errors.New("")
 	}
-	fmt.Println(result)
+	return &pb.AddTransactionReply{Status: "SUCCESS"}, nil
 }

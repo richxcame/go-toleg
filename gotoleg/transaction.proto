@@ -1,0 +1,19 @@
+syntax = "proto3";
+package transaction;
+
+option go_package = "github.com/richxcame/gotoleg";
+
+service Transaction {
+    rpc Add(AddTransactionRequest) returns (AddTransactionReply) {};
+}
+
+message AddTransactionRequest{
+    string localID = 1;
+    string service = 2;
+    string phone = 3;
+    string amount = 4;
+}
+
+message AddTransactionReply{
+    string status = 1;
+}
