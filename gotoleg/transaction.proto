@@ -4,16 +4,29 @@ package transaction;
 option go_package = "github.com/richxcame/gotoleg";
 
 service Transaction {
-    rpc Add(AddTransactionRequest) returns (AddTransactionReply) {};
+    rpc Add(TransactionRequest) returns (TransactionReply) {};
 }
 
-message AddTransactionRequest{
+message TransactionRequest{
     string localID = 1;
     string service = 2;
     string phone = 3;
     string amount = 4;
 }
 
-message AddTransactionReply{
+message TransactionReply{
     string status = 1;
+    int64 errorCode = 2;
+    string errorMessage = 3;
+    Result result = 4;
+
+}
+
+message Result{
+    string status = 1;
+    int64 refNum = 2;
+    string service = 3;
+    string destination = 4;
+    int64 amount = 5;
+    string state = 6;
 }

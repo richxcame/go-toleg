@@ -3,7 +3,6 @@ package transaction
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,22 +14,6 @@ import (
 	"github.com/richxcame/gotoleg/internal/utility"
 	"github.com/richxcame/gotoleg/pkg/hmacsha1"
 )
-
-// TODO: make standart struct with types
-type AddTransactionResult struct {
-	Status      string `json:"status"`
-	RefNum      int64  `json:"ref-num"`
-	Service     string `json:"service"`
-	Destination string `json:"destination"`
-	Amount      int    `json:"amount"`
-	State       string `json:"state"`
-}
-type AddTransactionResp struct {
-	Status       string               `json:"status,omitempty"`
-	ErrorCode    int                  `json:"error-code,omitempty"`
-	ErrorMessage string               `json:"error-msg,omitempty"`
-	Result       AddTransactionResult `json:"result,omitempty"`
-}
 
 type Server struct {
 	pb.UnimplementedTransactionServer
@@ -48,7 +31,7 @@ type Server struct {
 // hmac - hmac with access token
 //
 // msg = <local-id>:<service>:<amount>:<destination>:<txn-ts>:<ts>:<username>
-func (s *Server) Add(ctx context.Context, in *pb.AddTransactionRequest) (*pb.AddTransactionReply, error) {
+func (s *Server) Add(ctx context.Context, in *pb.TransactionRequest) (*pb.TransactionReply, error) {
 	// Get epoch time
 	epochTime, err := utility.GetEpoch()
 	if err != nil {
@@ -70,27 +53,32 @@ func (s *Server) Add(ctx context.Context, in *pb.AddTransactionRequest) (*pb.Add
 
 	resp, err := http.PostForm(constants.ADD_TRANSACTION_URL, data)
 	if err != nil {
-		fmt.Println(err, "post")
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	respInBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println(err, "respInBytes")
 		return nil, err
 	}
 
-	var result AddTransactionResp
+	var result TransactionResp
 	err = json.Unmarshal(respInBytes, &result)
 	if err != nil {
 		return nil, err
 	}
 
-	if result.Status != "SUCCESS" {
-		// TODO: add more types
-		fmt.Println(err, "is not success", result)
-		return nil, errors.New(result.ErrorMessage)
-	}
-	return &pb.AddTransactionReply{Status: "SUCCESS"}, nil
+	return &pb.TransactionReply{
+		Status:       result.Status,
+		ErrorCode:    result.ErrorCode,
+		ErrorMessage: result.ErrorMessage,
+		Result: &pb.Result{
+			Status:      result.Result.Status,
+			RefNum:      result.Result.RefNum,
+			Service:     result.Result.Service,
+			Destination: result.Result.Destination,
+			Amount:      result.Result.Amount,
+			State:       result.Result.State,
+		},
+	}, nil
 }

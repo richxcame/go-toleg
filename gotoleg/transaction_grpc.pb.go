@@ -22,7 +22,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type TransactionClient interface {
-	Add(ctx context.Context, in *AddTransactionRequest, opts ...grpc.CallOption) (*AddTransactionReply, error)
+	Add(ctx context.Context, in *TransactionRequest, opts ...grpc.CallOption) (*TransactionReply, error)
 }
 
 type transactionClient struct {
@@ -33,8 +33,8 @@ func NewTransactionClient(cc grpc.ClientConnInterface) TransactionClient {
 	return &transactionClient{cc}
 }
 
-func (c *transactionClient) Add(ctx context.Context, in *AddTransactionRequest, opts ...grpc.CallOption) (*AddTransactionReply, error) {
-	out := new(AddTransactionReply)
+func (c *transactionClient) Add(ctx context.Context, in *TransactionRequest, opts ...grpc.CallOption) (*TransactionReply, error) {
+	out := new(TransactionReply)
 	err := c.cc.Invoke(ctx, "/transaction.Transaction/Add", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -46,7 +46,7 @@ func (c *transactionClient) Add(ctx context.Context, in *AddTransactionRequest, 
 // All implementations must embed UnimplementedTransactionServer
 // for forward compatibility
 type TransactionServer interface {
-	Add(context.Context, *AddTransactionRequest) (*AddTransactionReply, error)
+	Add(context.Context, *TransactionRequest) (*TransactionReply, error)
 	mustEmbedUnimplementedTransactionServer()
 }
 
@@ -54,7 +54,7 @@ type TransactionServer interface {
 type UnimplementedTransactionServer struct {
 }
 
-func (UnimplementedTransactionServer) Add(context.Context, *AddTransactionRequest) (*AddTransactionReply, error) {
+func (UnimplementedTransactionServer) Add(context.Context, *TransactionRequest) (*TransactionReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Add not implemented")
 }
 func (UnimplementedTransactionServer) mustEmbedUnimplementedTransactionServer() {}
@@ -71,7 +71,7 @@ func RegisterTransactionServer(s grpc.ServiceRegistrar, srv TransactionServer) {
 }
 
 func _Transaction_Add_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AddTransactionRequest)
+	in := new(TransactionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func _Transaction_Add_Handler(srv interface{}, ctx context.Context, dec func(int
 		FullMethod: "/transaction.Transaction/Add",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TransactionServer).Add(ctx, req.(*AddTransactionRequest))
+		return srv.(TransactionServer).Add(ctx, req.(*TransactionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
