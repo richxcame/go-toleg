@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	addr = flag.String("addr", "localhost:6000", "the address to connect to")
+	addr = flag.String("addr", "localhost:50051", "the address to connect to")
 )
 
 func main() {
@@ -28,7 +28,7 @@ func main() {
 	// Contact the server and print out its response.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	r, err := c.Add(ctx, &pb.TransactionRequest{LocalID: "11", Service: "", Phone: "62726535", Amount: "100"})
+	r, err := c.Add(ctx, &pb.TransactionRequest{LocalID: "14", Service: "", Phone: "62254853", Amount: "100"})
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}

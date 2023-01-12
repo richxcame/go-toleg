@@ -1,6 +1,7 @@
 ## richxcame
 
--   [ ] Create grpc server
+-   [x] Create grpc server
+-   [ ] Move all functions to grpc server
 -   [ ] Test all functions
 
 ## Turkmenpochta
