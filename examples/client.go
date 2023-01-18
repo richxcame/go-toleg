@@ -28,7 +28,7 @@ func main() {
 	// Contact the server and print out its response.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	r, err := c.Add(ctx, &pb.TransactionRequest{LocalID: "14", Service: "", Phone: "62254853", Amount: "100"})
+	r, err := c.Add(ctx, &pb.TransactionRequest{LocalID: time.Now().String(), Service: "", Phone: "+99362254853", Amount: "100"})
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
