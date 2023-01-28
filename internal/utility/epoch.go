@@ -5,7 +5,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/richxcame/gotoleg/internal/constants"
+	"gotoleg/internal/constants"
 )
 
 // GetEpoch fetches unix time in seconds from "garynja"

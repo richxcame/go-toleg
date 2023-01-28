@@ -2,6 +2,7 @@ package transaction
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,14 +10,22 @@ import (
 	"net/url"
 	"strconv"
 
-	pb "github.com/richxcame/gotoleg/gotoleg"
-	"github.com/richxcame/gotoleg/internal/constants"
-	"github.com/richxcame/gotoleg/internal/utility"
-	"github.com/richxcame/gotoleg/pkg/hmacsha1"
+	"gotoleg/internal/constants"
+	"gotoleg/internal/db"
+	"gotoleg/internal/utility"
+	"gotoleg/pkg/hmacsha1"
+	"gotoleg/pkg/logger"
+	pb "gotoleg/rpc/gotoleg"
 )
 
-type Server struct {
-	pb.UnimplementedTransactionServer
+var DB *sql.DB
+
+func init() {
+	db, err := db.SetupDatabase()
+	if err != nil {
+		logger.Fatal("database connection error: %v", err.Error())
+	}
+	DB = db
 }
 
 // Add sends money to given destination
@@ -35,6 +44,7 @@ func (s *Server) Add(ctx context.Context, in *pb.TransactionRequest) (*pb.Transa
 	// Get epoch time
 	epochTime, err := utility.GetEpoch()
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -53,19 +63,30 @@ func (s *Server) Add(ctx context.Context, in *pb.TransactionRequest) (*pb.Transa
 
 	resp, err := http.PostForm(constants.ADD_TRANSACTION_URL, data)
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	respInBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
-	var result TransactionResp
+	var result GarynjaResponse
 	err = json.Unmarshal(respInBytes, &result)
 	if err != nil {
+		logger.Error(err)
 		return nil, err
+	}
+
+	// Save the result to database
+	const sqlStatement = `INSERT INTO transactions (id, local_id, service, phone, status, error_code, error_msg, result_status, result_ref_num, result_service, result_destination, result_amount, result_state) 
+					VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)`
+	_, err = DB.Exec(sqlStatement, result.Status, result.ErrorCode, result.ErrorMessage, result.Result.Status, result.Result.RefNum, result.Result.Service, result.Result.Destination, result.Result.Amount, result.Result.State)
+	if err != nil {
+		logger.Errorf("database.insert.error", in.LocalID, result)
 	}
 
 	return &pb.TransactionReply{

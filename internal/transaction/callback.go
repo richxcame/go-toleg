@@ -9,9 +9,9 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/richxcame/gotoleg/internal/constants"
-	"github.com/richxcame/gotoleg/internal/utility"
-	"github.com/richxcame/gotoleg/pkg/hmacsha1"
+	"gotoleg/internal/constants"
+	"gotoleg/internal/utility"
+	"gotoleg/pkg/hmacsha1"
 )
 
 // Callback is an address on dealer's server which will be used to inform sender of transaction about it's state change in order to make system asynchronous. Dealer no more needs to POLL the processing gateway for transaction state.
@@ -58,7 +58,7 @@ func Callback(localID, state string) {
 		log.Fatal(err)
 	}
 
-	var result TransactionResp
+	var result GarynjaResponse
 	err = json.Unmarshal(respInBytes, &result)
 	if err != nil {
 		log.Fatal(err)

@@ -6,7 +6,8 @@ import (
 	"log"
 	"time"
 
-	pb "github.com/richxcame/gotoleg/gotoleg"
+	pb "gotoleg/rpc/gotoleg"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )

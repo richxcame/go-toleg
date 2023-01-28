@@ -9,9 +9,9 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/richxcame/gotoleg/internal/constants"
-	"github.com/richxcame/gotoleg/internal/utility"
-	"github.com/richxcame/gotoleg/pkg/hmacsha1"
+	"gotoleg/internal/constants"
+	"gotoleg/internal/utility"
+	"gotoleg/pkg/hmacsha1"
 )
 
 // Check callback

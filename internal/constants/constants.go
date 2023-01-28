@@ -32,10 +32,10 @@ func init() {
 		panic(err)
 	}
 
-	BASE_URL = os.Getenv("BASE_URL")
-	USERNAME = os.Getenv("USERNAME")
-	SERVER = os.Getenv("SERVER")
-	ACCESS_TOKEN = os.Getenv("ACCESS_TOKEN")
+	BASE_URL = os.Getenv("GARYNJA_BASE_URL")
+	USERNAME = os.Getenv("GARYNJA_USERNAME")
+	SERVER = os.Getenv("GARYNJA_SERVER")
+	ACCESS_TOKEN = os.Getenv("GARYNJA_ACCESS_TOKEN")
 
 	EPOCH_URL = fmt.Sprintf("%s/epoch", BASE_URL)
 	BALANCE_URL = fmt.Sprintf("%s/%s/%s/dealer/balance", BASE_URL, USERNAME, SERVER)
