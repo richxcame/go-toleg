@@ -25,17 +25,17 @@ func init() {
 }
 
 func Error(args ...interface{}) {
-	Logger.Error(args)
+	Logger.Error(args...)
 }
 
 func Fatal(args ...interface{}) {
-	Logger.Fatal(args)
+	Logger.Fatal(args...)
 }
 
 func Errorf(template string, args ...interface{}) {
-	Logger.Errorf(template, args)
+	Logger.Errorf(template, args...)
 }
 
 func Fatalf(template string, args ...interface{}) {
-	Logger.Fatalf(template, args)
+	Logger.Fatalf(template, args...)
 }
