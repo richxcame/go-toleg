@@ -1,28 +1,23 @@
 package db
 
 import (
-	"database/sql"
-	"fmt"
+	"context"
+	"gotoleg/pkg/logger"
 	"os"
 
-	_ "github.com/lib/pq"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func SetupDatabase() (*sql.DB, error) {
-	dbUser := os.Getenv("DB_USER")
-	dbPass := os.Getenv("DB_PASS")
-	dbHost := os.Getenv("DB_HOST")
-	dbPort := os.Getenv("DB_PORT")
-	dbName := os.Getenv("DB_NAME")
-	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", dbUser, dbPass, dbHost, dbPort, dbName)
-	// Connect to database
-	db, err := sql.Open("postgres", connStr)
+var DB *pgxpool.Pool
+
+func init() {
+	dbpool, err := pgxpool.New(context.Background(), os.Getenv("DATABASE_URL"))
 	if err != nil {
-		return nil, err
+		logger.Fatalf("Failed to create new pool %v", err)
 	}
-	// Ping to database
-	if err := db.Ping(); err != nil {
-		return nil, err
+	if err := dbpool.Ping(context.Background()); err != nil {
+		logger.Fatalf("Couldn't connect to database %v", err)
 	}
-	return db, nil
+
+	DB = dbpool
 }
