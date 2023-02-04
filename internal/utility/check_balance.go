@@ -9,8 +9,8 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/richxcame/gotoleg/internal/constants"
-	"github.com/richxcame/gotoleg/pkg/hmacsha1"
+	"gotoleg/internal/constants"
+	"gotoleg/pkg/hmacsha1"
 )
 
 type CheckBalanceResult struct {

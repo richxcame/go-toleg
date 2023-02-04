@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             v3.21.12
-// source: gotoleg/transaction.proto
+// source: rpc/gotoleg/transaction.proto
 
 package gotoleg
 
@@ -101,5 +101,5 @@ var Transaction_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "gotoleg/transaction.proto",
+	Metadata: "rpc/gotoleg/transaction.proto",
 }

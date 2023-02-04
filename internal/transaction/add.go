@@ -9,15 +9,20 @@ import (
 	"net/url"
 	"strconv"
 
-	pb "github.com/richxcame/gotoleg/gotoleg"
-	"github.com/richxcame/gotoleg/internal/constants"
-	"github.com/richxcame/gotoleg/internal/utility"
-	"github.com/richxcame/gotoleg/pkg/hmacsha1"
-)
+	"gotoleg/internal/config"
+	"gotoleg/internal/constants"
+	"gotoleg/internal/db"
+	"gotoleg/internal/utility"
+	"gotoleg/pkg/arrs"
+	"gotoleg/pkg/hmacsha1"
+	"gotoleg/pkg/logger"
+	pb "gotoleg/rpc/gotoleg"
 
-type Server struct {
-	pb.UnimplementedTransactionServer
-}
+	"github.com/google/uuid"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
+)
 
 // Add sends money to given destination
 //
@@ -32,9 +37,24 @@ type Server struct {
 //
 // msg = <local-id>:<service>:<amount>:<destination>:<txn-ts>:<ts>:<username>
 func (s *Server) Add(ctx context.Context, in *pb.TransactionRequest) (*pb.TransactionReply, error) {
+	// Get metadata and api_key from it
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return nil, status.Errorf(codes.Unauthenticated, "failed to get metadata")
+	}
+	apiKey := make([]string, 0)
+	apiKey = append(apiKey, md.Get("api_key")...)
+
+	// Check the given "api_key" included in list of clients
+	client, hasInList := arrs.HasMapWithKey(config.Clients, apiKey[0])
+	if !hasInList {
+		return nil, status.Errorf(codes.InvalidArgument, "wrong api_key")
+	}
+
 	// Get epoch time
 	epochTime, err := utility.GetEpoch()
 	if err != nil {
+		logger.Error(err, in)
 		return nil, err
 	}
 
@@ -53,19 +73,29 @@ func (s *Server) Add(ctx context.Context, in *pb.TransactionRequest) (*pb.Transa
 
 	resp, err := http.PostForm(constants.ADD_TRANSACTION_URL, data)
 	if err != nil {
+		logger.Error(err, in)
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	respInBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
+		logger.Error(err, in)
 		return nil, err
 	}
 
-	var result TransactionResp
+	var result GarynjaResponse
 	err = json.Unmarshal(respInBytes, &result)
 	if err != nil {
+		logger.Error(err, in)
 		return nil, err
+	}
+
+	const sqlStr = `INSERT INTO transactions (uuid, request_local_id, request_service, request_phone, request_amount, status, error_code, error_msg, result_status, result_ref_num, result_service, result_destination, result_amount, result_state, client) 
+					VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`
+	_, err = db.DB.Exec(context.Background(), sqlStr, uuid.New(), in.LocalID, in.Service, in.Phone, in.Amount, result.Status, result.ErrorCode, result.ErrorMessage, result.Result.Status, result.Result.RefNum, result.Result.Service, result.Result.Destination, result.Result.Amount, result.Result.State, client)
+	if err != nil {
+		logger.Error(err, in)
 	}
 
 	return &pb.TransactionReply{

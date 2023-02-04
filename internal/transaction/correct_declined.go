@@ -9,9 +9,9 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/richxcame/gotoleg/internal/constants"
-	"github.com/richxcame/gotoleg/internal/utility"
-	"github.com/richxcame/gotoleg/pkg/hmacsha1"
+	"gotoleg/internal/constants"
+	"gotoleg/internal/utility"
+	"gotoleg/pkg/hmacsha1"
 )
 
 // CorrectDeclined resends declined transactions by correcting service key
@@ -52,7 +52,7 @@ func CorrectDeclined(localID, service string) {
 		log.Fatal(err)
 	}
 
-	var result TransactionResp
+	var result GarynjaResponse
 	err = json.Unmarshal(respInBytes, &result)
 	if err != nil {
 		log.Fatal(err)

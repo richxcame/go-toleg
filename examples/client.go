@@ -2,23 +2,29 @@ package main
 
 import (
 	"context"
-	"flag"
+	"fmt"
 	"log"
+	"os"
 	"time"
 
-	pb "github.com/richxcame/gotoleg/gotoleg"
+	pb "gotoleg/rpc/gotoleg"
+
+	"github.com/joho/godotenv"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 )
 
-var (
-	addr = flag.String("addr", "localhost:50051", "the address to connect to")
-)
+func init() {
+	if err := godotenv.Load("../.env"); err != nil {
+		log.Fatalf("couldn't read .env file: %v", err)
+	}
+}
 
 func main() {
-	flag.Parse()
+	addr := os.Getenv("GOTOLEG_PORT")
 	// Set up a connection to the server.
-	conn, err := grpc.Dial(*addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(fmt.Sprintf("localhost:%v", addr), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -26,9 +32,8 @@ func main() {
 	c := pb.NewTransactionClient(conn)
 
 	// Contact the server and print out its response.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	r, err := c.Add(ctx, &pb.TransactionRequest{LocalID: time.Now().String(), Service: "", Phone: "+99362254853", Amount: "100"})
+	ctx := metadata.AppendToOutgoingContext(context.Background(), "api_key", os.Getenv("TEST_GOTOLEG_API_KEY"))
+	r, err := c.Add(ctx, &pb.TransactionRequest{LocalID: time.Now().String(), Service: "", Phone: os.Getenv("TEST_GOTOLEG_PHONE"), Amount: os.Getenv("TEST_GOTOLEG_AMOUNT")})
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}

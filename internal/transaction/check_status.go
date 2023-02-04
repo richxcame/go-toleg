@@ -9,9 +9,9 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/richxcame/gotoleg/internal/constants"
-	"github.com/richxcame/gotoleg/internal/utility"
-	"github.com/richxcame/gotoleg/pkg/hmacsha1"
+	"gotoleg/internal/constants"
+	"gotoleg/internal/utility"
+	"gotoleg/pkg/hmacsha1"
 )
 
 // CheckStatus checks status of transaction with given localID
@@ -49,7 +49,7 @@ func CheckStatus(localID string) {
 		log.Fatal(err)
 	}
 
-	var result TransactionResp
+	var result GarynjaResponse
 	err = json.Unmarshal(respInBytes, &result)
 	if err != nil {
 		log.Fatal(err)
