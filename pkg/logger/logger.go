@@ -3,6 +3,7 @@ package logger
 import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	lumberjack "gopkg.in/natefinch/lumberjack.v2"
 )
 
 // It's not recommended to use zap directly cause of dependency injection, if you want to use its function so export it as logger package's function
@@ -15,10 +16,21 @@ func init() {
 	config.EncoderConfig.EncodeTime = zapcore.TimeEncoderOfLayout("2006 Jan 02 15:04:05")
 	config.EncoderConfig.StacktraceKey = ""
 
-	logger, err := config.Build()
-	if err != nil {
-		panic(err.Error())
-	}
+	w := zapcore.AddSync(&lumberjack.Logger{
+		Filename:   "./logs/error.log",
+		MaxSize:    10, //MB
+		MaxBackups: 30,
+		MaxAge:     30, //days
+		Compress:   true,
+	})
+
+	core := zapcore.NewCore(
+		zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
+		w,
+		zap.InfoLevel,
+	)
+
+	logger := zap.New(core)
 
 	Logger = logger.Sugar()
 
