@@ -23,7 +23,6 @@ func init() {
 
 func main() {
 	addr := os.Getenv("GOTOLEG_PORT")
-	fmt.Printf("localhost:%v", addr)
 	// Set up a connection to the server.
 	conn, err := grpc.Dial(fmt.Sprintf("localhost:%v", addr), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
