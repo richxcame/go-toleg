@@ -12,5 +12,7 @@ CREATE TABLE transactions (
 	result_service varchar(255),
 	result_destination varchar(255),
 	result_amount bigint,
-	result_state varchar(255)
+	result_state varchar(255),
+	is_checked boolean NOT NULL DEFAULT false,
+	client varchar(255)
 );
