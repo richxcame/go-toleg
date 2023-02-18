@@ -40,6 +40,7 @@ func (s *Server) Add(ctx context.Context, in *pb.TransactionRequest) (*pb.Transa
 	// Get metadata and api_key from it
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
+		logger.Error("failed to get metadata")
 		return nil, status.Errorf(codes.Unauthenticated, "failed to get metadata")
 	}
 	apiKey := make([]string, 0)
@@ -48,6 +49,7 @@ func (s *Server) Add(ctx context.Context, in *pb.TransactionRequest) (*pb.Transa
 	// Check the given "api_key" included in list of clients
 	client, hasInList := arrs.HasMapWithKey(config.Clients, apiKey[0])
 	if !hasInList {
+		logger.Error("wrong api_key")
 		return nil, status.Errorf(codes.InvalidArgument, "wrong api_key")
 	}
 
@@ -56,6 +58,16 @@ func (s *Server) Add(ctx context.Context, in *pb.TransactionRequest) (*pb.Transa
 	if err != nil {
 		logger.Error(err, in)
 		return nil, err
+	}
+
+	_uuid := uuid.New().String()
+	sqlStatement := `
+		INSERT INTO transactions (uuid, client, request_local_id, request_service, request_phone, request_amount)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		`
+	_, err = db.DB.Exec(context.Background(), sqlStatement, _uuid, client, in.LocalID, in.Service, in.Phone, in.Amount)
+	if err != nil {
+		logger.Error(err, in)
 	}
 
 	// Prepare ts, msg and request body
@@ -91,9 +103,8 @@ func (s *Server) Add(ctx context.Context, in *pb.TransactionRequest) (*pb.Transa
 		return nil, err
 	}
 
-	const sqlStr = `INSERT INTO transactions (uuid, request_local_id, request_service, request_phone, request_amount, status, error_code, error_msg, result_status, result_ref_num, result_service, result_destination, result_amount, result_state, client) 
-					VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`
-	_, err = db.DB.Exec(context.Background(), sqlStr, uuid.New(), in.LocalID, in.Service, in.Phone, in.Amount, result.Status, result.ErrorCode, result.ErrorMessage, result.Result.Status, result.Result.RefNum, result.Result.Service, result.Result.Destination, result.Result.Amount, result.Result.State, client)
+	const sqlStr = `UPDATE transactions SET status=$1, error_code=$2, error_msg=$3, result_status=$4, result_ref_num=$5, result_service=$6, result_destination=$7, result_amount=$8, result_state=$9 WHERE uuid=$10`
+	_, err = db.DB.Exec(context.Background(), sqlStr, result.Status, result.ErrorCode, result.ErrorMessage, result.Result.Status, result.Result.RefNum, result.Result.Service, result.Result.Destination, result.Result.Amount, result.Result.State, _uuid)
 	if err != nil {
 		logger.Error(err, in)
 	}
