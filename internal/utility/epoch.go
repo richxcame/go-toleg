@@ -1,6 +1,7 @@
 package utility
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 //
 // GET /api/epoch
 func GetEpoch() (int64, error) {
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	resp, err := http.Get(constants.EPOCH_URL)
 	if err != nil {
 		return 0, err
