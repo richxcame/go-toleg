@@ -9,12 +9,18 @@ import (
 	"gotoleg/internal/transaction"
 
 	pb "gotoleg/rpc/gotoleg"
+	"gotoleg/web/routes"
 
 	_ "github.com/joho/godotenv/autoload"
 	"google.golang.org/grpc"
 )
 
 func main() {
+	// HTTP server
+	r := routes.SetupRoutes()
+	go r.Run()
+
+	// GRPC server
 	gotolegPort := os.Getenv("GOTOLEG_PORT")
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%v", gotolegPort))
 	if err != nil {
