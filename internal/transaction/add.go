@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 
 	"gotoleg/internal/config"
 	"gotoleg/internal/constants"
@@ -62,10 +63,10 @@ func (s *Server) Add(ctx context.Context, in *pb.TransactionRequest) (*pb.Transa
 
 	_uuid := uuid.New().String()
 	sqlStatement := `
-		INSERT INTO transactions (uuid, client, request_local_id, request_service, request_phone, request_amount)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO transactions (uuid, created_at, updated_at, client, request_local_id, request_service, request_phone, request_amount)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		`
-	_, err = db.DB.Exec(context.Background(), sqlStatement, _uuid, client, in.LocalID, in.Service, in.Phone, in.Amount)
+	_, err = db.DB.Exec(context.Background(), sqlStatement, _uuid, time.Now(), time.Now(), client, in.LocalID, in.Service, in.Phone, in.Amount)
 	if err != nil {
 		logger.Error(err, in)
 	}
@@ -103,8 +104,8 @@ func (s *Server) Add(ctx context.Context, in *pb.TransactionRequest) (*pb.Transa
 		return nil, err
 	}
 
-	const sqlStr = `UPDATE transactions SET status=$1, error_code=$2, error_msg=$3, result_status=$4, result_ref_num=$5, result_service=$6, result_destination=$7, result_amount=$8, result_state=$9 WHERE uuid=$10`
-	_, err = db.DB.Exec(context.Background(), sqlStr, result.Status, result.ErrorCode, result.ErrorMessage, result.Result.Status, result.Result.RefNum, result.Result.Service, result.Result.Destination, result.Result.Amount, result.Result.State, _uuid)
+	const sqlStr = `UPDATE transactions SET status=$1, error_code=$2, error_msg=$3, result_status=$4, result_ref_num=$5, result_service=$6, result_destination=$7, result_amount=$8, result_state=$9, updated_at=$10 WHERE uuid=$11`
+	_, err = db.DB.Exec(context.Background(), sqlStr, result.Status, result.ErrorCode, result.ErrorMessage, result.Result.Status, result.Result.RefNum, result.Result.Service, result.Result.Destination, result.Result.Amount, result.Result.State, time.Now(), _uuid)
 	if err != nil {
 		logger.Error(err, in)
 	}

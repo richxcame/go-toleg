@@ -1,5 +1,7 @@
 CREATE TABLE transactions (
 	uuid uuid PRIMARY KEY,
+	created_at timestamp NOT NULL,
+	updated_at timestamp NOT NULL,
 	request_local_id varchar(255),
 	request_service varchar(255),
 	request_phone varchar(255),
