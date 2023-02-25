@@ -5,13 +5,15 @@ import (
 	"gotoleg/internal/db"
 	"gotoleg/pkg/logger"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
-const GetTransactionsQuery = `select uuid, created_at, updated_at, request_local_id, request_service, request_phone, request_amount, status, error_code, error_msg, result_status, result_ref_num, result_service, result_destination, result_amount, result_state, is_checked, client from transactions offset $1 limit $2`
+const GetTransactionsQuery = `SELECT uuid, created_at, updated_at, request_local_id, request_service, request_phone, request_amount, status, error_code, error_msg, result_status, result_ref_num, result_service, result_destination, result_amount, result_state, is_checked, client FROM transactions ORDER BY created_at DESC OFFSET $1 LIMIT $2`
+const GetTransactionsCountQuery = `SELECT COUNT(*) FROM transactions`
 
 type Transaction struct {
 	UUID              uuid.UUID `json:"uuid"`
@@ -35,7 +37,26 @@ type Transaction struct {
 }
 
 func GetTransactions(ctx *gin.Context) {
-	rows, err := db.DB.Query(context.Background(), GetTransactionsQuery, 0, 10)
+	offsetQuery := ctx.DefaultQuery("offset", "0")
+	limitQuery := ctx.DefaultQuery("limit", "20")
+	offset, err := strconv.Atoi(offsetQuery)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error":   err.Error(),
+			"message": "offset value must be convertable to integer",
+		})
+		return
+	}
+	limit, err := strconv.Atoi(limitQuery)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error":   err.Error(),
+			"message": "limit value must be convertable to integer",
+		})
+		return
+	}
+
+	rows, err := db.DB.Query(context.Background(), GetTransactionsQuery, offset, limit)
 	if err != nil {
 		logger.Error(err)
 	}
@@ -51,5 +72,20 @@ func GetTransactions(ctx *gin.Context) {
 		transactions = append(transactions, trxn)
 	}
 
-	ctx.JSON(http.StatusOK, transactions)
+	totalCount := 0
+	err = db.DB.QueryRow(context.Background(), GetTransactionsCountQuery).Scan(&totalCount)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error":   err.Error(),
+			"message": "Couldn't count total number of transactions",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"transactions": transactions,
+		"offset":       offset,
+		"limit":        limit,
+		"total_count":  totalCount,
+	})
 }
