@@ -15,7 +15,7 @@ import (
 
 const GetTransactionsQuery = `SELECT uuid, created_at, updated_at, request_local_id, request_service, request_phone, request_amount, status, error_code, error_msg, result_status, result_ref_num, result_service, result_destination, result_amount, result_state, is_checked, client FROM transactions ORDER BY created_at DESC OFFSET $1 LIMIT $2`
 const GetTransactionsCountQuery = `SELECT COUNT(*) FROM transactions`
-const GetUserQuery = `SELECT username, created_at, update_at, password FROM users WHERE username = $1`
+const GetUserQuery = `SELECT username, password FROM users WHERE username = $1`
 
 func GetTransactions(ctx *gin.Context) {
 	offsetQuery := ctx.DefaultQuery("offset", "0")
@@ -82,7 +82,7 @@ func Login(ctx *gin.Context) {
 	}
 
 	var dUser entities.User
-	err := db.DB.QueryRow(context.Background(), GetUserQuery, user.Username).Scan(&dUser.Username, &dUser.CreatedAt, &dUser.UpdatedAt, &dUser.Password)
+	err := db.DB.QueryRow(context.Background(), GetUserQuery, user.Username).Scan(&dUser.Username, &dUser.Password)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"error":   err.Error(),
