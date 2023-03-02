@@ -95,29 +95,27 @@ func GetTransactions(ctx *gin.Context) {
 	}
 
 	// Get all distinct status strings including filters
-	// statusRows, err := db.DB.Query(context.Background(), "SELECT DISTINCT(status) from transactions"+sqlFilters, values...)
-	// if err != nil {
-	// 	logger.Error(err)
-	// }
-	// defer statusRows.Close()
+	statusRows, err := db.DB.Query(context.Background(), "SELECT DISTINCT(status) from transactions"+sqlFilters, values...)
+	if err != nil {
+		logger.Error(err)
+	}
+	defer statusRows.Close()
 
-	// var statuses []string
-	// for statusRows.Next() {
-	// 	// var status string
-	// 	var status string
-	// 	if err := rows.Scan(&status); err != nil {
-	// 		logger.Errorf("row scan error %v", err)
-	// 	}
-	// 	fmt.Println(status)
-	// 	statuses = append(statuses, status)
-	// }
+	statuses := make([]any, 0)
+	for statusRows.Next() {
+		val, err := statusRows.Values()
+		if err != nil || len(val) < 1 {
+			break
+		}
+		statuses = append(statuses, val[0])
+	}
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"transactions": transactions,
-		// "statuses":     statuses,
-		"offset":      offset,
-		"limit":       limit,
-		"total_count": totalCount,
+		"statuses":     statuses,
+		"offset":       offset,
+		"limit":        limit,
+		"total_count":  totalCount,
 	})
 }
 
