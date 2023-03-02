@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 
+	"gotoleg/internal/db"
 	"gotoleg/internal/transaction"
 
 	pb "gotoleg/rpc/gotoleg"
@@ -16,6 +17,9 @@ import (
 )
 
 func main() {
+	// Close db pool
+	defer db.DB.Close()
+
 	// HTTP server
 	r := routes.SetupRoutes()
 	go r.Run()
