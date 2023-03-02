@@ -2,12 +2,15 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"gotoleg/internal/db"
+	"gotoleg/pkg/arrs"
 	"gotoleg/pkg/logger"
 	"gotoleg/web/entities"
 	"gotoleg/web/helpers"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -37,7 +40,35 @@ func GetTransactions(ctx *gin.Context) {
 		return
 	}
 
-	rows, err := db.DB.Query(context.Background(), GetTransactionsQuery, offset, limit)
+	urlQueries := ctx.Request.URL.Query()
+	index := 0
+	var values []interface{}
+	var queries []string
+	for k, v := range urlQueries {
+		if arrs.Contains([]string{"uuid", "request_local_id", "request_service", "request_phone"}, k) {
+			str := ""
+			for _, v := range v {
+				str += v + "|"
+			}
+			str = strings.TrimSuffix(str, "|")
+			str += ""
+			values = append(values, str)
+			index++
+
+			queries = append(queries, fmt.Sprintf("%s ~* $", k)+strconv.Itoa(index))
+		}
+	}
+	valuesWithPagination := append(values, offset, limit)
+
+	sqlStatement := "SELECT uuid, created_at, updated_at, request_local_id, request_service, request_phone, request_amount, status, error_code, error_msg, result_status, result_ref_num, result_service, result_destination, result_amount, result_state, is_checked, client FROM transactions"
+	sqlFilters := ""
+	if len(queries) > 0 {
+		sqlFilters += " WHERE "
+		sqlFilters += strings.Join(queries, " AND ")
+	}
+	sqlStatement += sqlFilters
+	sqlStatement += fmt.Sprintf(" offset $%v limit $%v", index+1, index+2)
+	rows, err := db.DB.Query(context.Background(), sqlStatement, valuesWithPagination...)
 	if err != nil {
 		logger.Error(err)
 	}
@@ -54,7 +85,7 @@ func GetTransactions(ctx *gin.Context) {
 	}
 
 	totalCount := 0
-	err = db.DB.QueryRow(context.Background(), GetTransactionsCountQuery).Scan(&totalCount)
+	err = db.DB.QueryRow(context.Background(), "SELECT COUNT(*) FROM transactions"+sqlFilters, values...).Scan(&totalCount)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
@@ -63,11 +94,30 @@ func GetTransactions(ctx *gin.Context) {
 		return
 	}
 
+	// Get all distinct status strings including filters
+	// statusRows, err := db.DB.Query(context.Background(), "SELECT DISTINCT(status) from transactions"+sqlFilters, values...)
+	// if err != nil {
+	// 	logger.Error(err)
+	// }
+	// defer statusRows.Close()
+
+	// var statuses []string
+	// for statusRows.Next() {
+	// 	// var status string
+	// 	var status string
+	// 	if err := rows.Scan(&status); err != nil {
+	// 		logger.Errorf("row scan error %v", err)
+	// 	}
+	// 	fmt.Println(status)
+	// 	statuses = append(statuses, status)
+	// }
+
 	ctx.JSON(http.StatusOK, gin.H{
 		"transactions": transactions,
-		"offset":       offset,
-		"limit":        limit,
-		"total_count":  totalCount,
+		// "statuses":     statuses,
+		"offset":      offset,
+		"limit":       limit,
+		"total_count": totalCount,
 	})
 }
 
