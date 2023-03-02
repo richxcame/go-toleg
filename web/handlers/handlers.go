@@ -67,6 +67,7 @@ func GetTransactions(ctx *gin.Context) {
 		sqlFilters += strings.Join(queries, " AND ")
 	}
 	sqlStatement += sqlFilters
+	sqlStatement += " ORDER BY created_at DESC "
 	sqlStatement += fmt.Sprintf(" offset $%v limit $%v", index+1, index+2)
 	rows, err := db.DB.Query(context.Background(), sqlStatement, valuesWithPagination...)
 	if err != nil {
