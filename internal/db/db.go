@@ -10,7 +10,7 @@ import (
 
 var DB *pgxpool.Pool
 
-func init() {
+func CreateDB() *pgxpool.Pool {
 	dbpool, err := pgxpool.New(context.Background(), os.Getenv("DATABASE_URL"))
 	if err != nil {
 		logger.Fatalf("Failed to create new pool %v", err)
@@ -20,4 +20,6 @@ func init() {
 	}
 
 	DB = dbpool
+
+	return dbpool
 }

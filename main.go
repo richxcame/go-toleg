@@ -18,7 +18,8 @@ import (
 
 func main() {
 	// Close db pool
-	defer db.DB.Close()
+	pool := db.CreateDB()
+	defer pool.Close()
 
 	// HTTP server
 	r := routes.SetupRoutes()
