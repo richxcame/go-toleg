@@ -19,6 +19,8 @@ func SetupRoutes() *gin.Engine {
 
 	{
 		api.GET("/transactions", middlewares.Auth(), handlers.GetTransactions)
+		api.POST("/transactions", middlewares.Auth(), handlers.SendTransactions)
+		api.POST("/transactions/:uuid", middlewares.Auth(), handlers.SendTransaction)
 		// api.GET("/transactions", handlers.GetTransactions)
 
 		api.POST("/auth/login", handlers.Login)
