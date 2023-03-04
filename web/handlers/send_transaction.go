@@ -2,20 +2,22 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"gotoleg/internal/constants"
 	"gotoleg/internal/db"
+	"gotoleg/internal/transaction"
+	"gotoleg/internal/utility"
+	"gotoleg/pkg/hmacsha1"
 	"gotoleg/pkg/logger"
 	"gotoleg/web/entities"
+	"io"
 	"net/http"
-	"os"
+	"net/url"
+	"strconv"
 	"time"
 
-	pb "gotoleg/rpc/gotoleg"
-
 	"github.com/gin-gonic/gin"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/metadata"
 )
 
 func SendTransactions(ctx *gin.Context) {
@@ -37,7 +39,7 @@ func SendTransactions(ctx *gin.Context) {
 	fmt.Println(len(transactions))
 }
 
-// SendTransaction sends money to given phone number if the transaction didn't send
+// SendTransaction resends money if status or result_status is equal to empty string
 // For example: If couldn't get response from epoch time request, it might be the transaction didn't send to client
 func SendTransaction(ctx *gin.Context) {
 	// Get UUID from URL param
@@ -72,11 +74,61 @@ func SendTransaction(ctx *gin.Context) {
 	}
 
 	// Send money
-	result, hasError := send(trxn.RequestLocalID, trxn.RequestService, trxn.RequestPhone, trxn.RequestAmount)
-	if hasError {
+	// Get epoch time
+	epochTime, err := utility.GetEpoch()
+	if err != nil {
+		logger.Errorf("epoch time get error: %v", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "grpc add error",
-			"message": "Couldn't send money to given phone",
+			"error":   err.Error(),
+			"message": "Couldn't get epoch time",
+		})
+		return
+	}
+
+	// Prepare ts, msg and request body
+	ts := strconv.FormatInt(epochTime, 10)
+	msg := fmt.Sprintf("%s:%s:%s:%s:%s:%s:%s", trxn.RequestLocalID, trxn.RequestService, trxn.RequestAmount, trxn.RequestPhone, ts, ts, constants.USERNAME)
+	data := url.Values{
+		"local-id":    {trxn.RequestLocalID},
+		"service":     {trxn.RequestLocalID},
+		"amount":      {trxn.RequestAmount},
+		"destination": {trxn.RequestPhone},
+		"txn-ts":      {ts},
+		"ts":          {ts},
+		"hmac":        {hmacsha1.Generate(constants.ACCESS_TOKEN, msg)},
+	}
+
+	// Send post request to send money
+	resp, err := http.PostForm(constants.ADD_TRANSACTION_URL, data)
+	if err != nil {
+		logger.Error(err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error":   err.Error(),
+			"message": "Couldn't post transaction's data",
+		})
+		return
+	}
+	defer resp.Body.Close()
+
+	// Read response bytes
+	respInBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		logger.Error(err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error":   err.Error(),
+			"message": "Couldn't parse response bytes",
+		})
+		return
+	}
+
+	// Parse response bytes
+	var result transaction.GarynjaResponse
+	err = json.Unmarshal(respInBytes, &result)
+	if err != nil {
+		logger.Error(err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error":   err.Error(),
+			"message": "Couldn't parse from bytes to struct",
 		})
 		return
 	}
@@ -93,24 +145,4 @@ func SendTransaction(ctx *gin.Context) {
 		"success": true,
 		"message": "Transaction has been sent",
 	})
-}
-
-func send(id, service, phone, amount string) (result *pb.TransactionReply, hasError bool) {
-	addr := os.Getenv("GOTOLEG_PORT")
-	conn, err := grpc.Dial(fmt.Sprintf("localhost:%v", addr), grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		logger.Errorf("grpc connection error: %v", err)
-		return nil, true
-	}
-	defer conn.Close()
-
-	c := pb.NewTransactionClient(conn)
-	// Contact the server and print out its response.
-	context := metadata.AppendToOutgoingContext(context.Background(), "api_key", os.Getenv("GOTOLEG_SUPER_KEY"))
-	result, err = c.Add(context, &pb.TransactionRequest{LocalID: id, Service: service, Phone: phone, Amount: amount})
-	if err != nil {
-		logger.Errorf("grpc add() error: %v", err)
-		return nil, true
-	}
-	return result, false
 }
