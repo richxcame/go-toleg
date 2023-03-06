@@ -90,7 +90,7 @@ func SendTransaction(ctx *gin.Context) {
 	msg := fmt.Sprintf("%s:%s:%s:%s:%s:%s:%s", trxn.RequestLocalID, trxn.RequestService, trxn.RequestAmount, trxn.RequestPhone, ts, ts, constants.USERNAME)
 	data := url.Values{
 		"local-id":    {trxn.RequestLocalID},
-		"service":     {trxn.RequestLocalID},
+		"service":     {trxn.RequestService},
 		"amount":      {trxn.RequestAmount},
 		"destination": {trxn.RequestPhone},
 		"txn-ts":      {ts},
