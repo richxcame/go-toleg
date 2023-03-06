@@ -13,6 +13,7 @@ import (
 	"gotoleg/web/entities"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strconv"
 	"time"
@@ -36,7 +37,25 @@ func SendTransactions(ctx *gin.Context) {
 		}
 		transactions = append(transactions, trxn)
 	}
-	fmt.Println(len(transactions))
+
+	sucessCount := 0
+	errorCount := 0
+	for _, v := range transactions {
+		w := httptest.NewRecorder()
+		gin.SetMode(gin.TestMode)
+		ctx, _ := gin.CreateTestContext(w)
+		ctx.Params = []gin.Param{{Key: "uuid", Value: v.UUID.String()}}
+		SendTransaction(ctx)
+		if w.Result().StatusCode == 200 {
+			sucessCount++
+		} else {
+			errorCount++
+		}
+	}
+	ctx.JSON(200, gin.H{
+		"sucess_count": sucessCount,
+		"error_count":  errorCount,
+	})
 }
 
 // SendTransaction resends money if status or result_status is equal to empty string
