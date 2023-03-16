@@ -8,11 +8,14 @@ import (
 	"gotoleg/pkg/logger"
 	"gotoleg/web/entities"
 	"gotoleg/web/helpers"
+	"gotoleg/web/middlewares"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -162,7 +165,41 @@ func Login(ctx *gin.Context) {
 		"refresh_token": tokens.RefreshToken,
 	})
 }
+func Token(c *gin.Context) {
+	claims := &middlewares.Claims{}
+	token := middlewares.Tokens{}
+	if err := c.BindJSON(&token); err != nil {
+		logger.Errorf("couldn't bind token body %v", err)
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
+	tkn, err := jwt.ParseWithClaims(token.RefreshToken, claims, func(t *jwt.Token) (interface{}, error) {
+		return middlewares.JWT_SECRET, nil
+	})
+	if err != nil {
+		logger.Errorf("couldn't parse token %v", err)
+		c.AbortWithStatusJSON(http.StatusBadRequest, "Cannot parse token")
+		return
+	}
 
-func RefreshToken(ctx *gin.Context) {
-	ctx.JSON(200, "success login")
+	if claims.ExpiresAt.Unix() < time.Now().Local().Unix() {
+		logger.Errorf("refresh_token is expired")
+		c.AbortWithStatusJSON(http.StatusForbidden, "Token expired")
+		return
+	}
+
+	if !tkn.Valid {
+		logger.Errorf("invalid token")
+		c.AbortWithStatusJSON(http.StatusBadRequest, "Invalid token")
+		return
+	}
+
+	tokens, err := helpers.RefreshToken(claims)
+	if err != nil {
+		c.JSON(http.StatusForbidden, err.Error())
+		return
+	}
+
+	tokens.RefreshToken = token.RefreshToken
+	c.JSON(http.StatusOK, tokens)
 }

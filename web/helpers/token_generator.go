@@ -2,7 +2,9 @@ package helpers
 
 import (
 	"gotoleg/web/entities"
+	"gotoleg/web/middlewares"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -52,6 +54,38 @@ func GenerateJWT(username string) (token Tokens, err error) {
 	token.RefreshToken, err = refreshToken.SignedString(JWT_SECRET)
 	if err != nil {
 		return Tokens{}, err
+	}
+
+	return token, nil
+}
+
+func RefreshToken(claims *middlewares.Claims) (token middlewares.Tokens, err error) {
+	accessTokenTimeOut, err := strconv.Atoi(os.Getenv("ACCESS_TOKEN_TIMEOUT"))
+	if err != nil {
+		return middlewares.Tokens{}, err
+	}
+	expirationTime := time.Now().Add(time.Duration(accessTokenTimeOut) * time.Second)
+
+	claims.ExpiresAt = &jwt.NumericDate{Time: expirationTime}
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token.AccessToken, err = accessToken.SignedString(middlewares.JWT_SECRET)
+	if err != nil {
+		return middlewares.Tokens{}, err
+	}
+
+	refreshTokenTimeOut, err := strconv.Atoi(os.Getenv("REFRESH_TOKEN_TIMEOUT"))
+	if err != nil {
+		return middlewares.Tokens{}, err
+	}
+	expirationTime = time.Now().Add(time.Duration(refreshTokenTimeOut) * time.Second)
+
+	claims.ExpiresAt = &jwt.NumericDate{Time: expirationTime}
+
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	token.RefreshToken, err = refreshToken.SignedString(middlewares.JWT_SECRET)
+	if err != nil {
+		return middlewares.Tokens{}, err
 	}
 
 	return token, nil
