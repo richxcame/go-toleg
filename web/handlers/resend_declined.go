@@ -84,7 +84,7 @@ func ResendDeclinedTrxn(ctx *gin.Context) {
 		return
 	}
 
-	result, err := transaction.ResendDeclined(uuid)
+	result, err := transaction.ResendDeclined(trxn.RequestLocalID)
 	if err != nil {
 		logger.Error(err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{
