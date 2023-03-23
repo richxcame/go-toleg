@@ -52,7 +52,6 @@ func ResendDeclined(localID string) (*GarynjaResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return &result, nil
 
 }
