@@ -23,6 +23,7 @@ type Result struct {
 	UpdateTS      float64 `json:"update-ts"`
 	ReceivedTS    float64 `json:"received-ts"`
 	TransactionTS float64 `json:"txn-ts"`
+	Reason        string  `json:"reason"`
 }
 
 type Server struct {

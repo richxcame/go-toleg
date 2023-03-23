@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -20,12 +19,12 @@ import (
 // local-id - client id of transaction (max 30 chars)
 // ts - epoch time at client
 // hmac - hmac with shared key
-func ResendDeclined(localID string) {
+func ResendDeclined(localID string) (*GarynjaResponse, error) {
 
 	// Get epoch time
 	epochTime, err := utility.GetEpoch()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	// Prepare ts, msg and request body
@@ -39,23 +38,21 @@ func ResendDeclined(localID string) {
 
 	resp, err := http.PostForm(constants.TRANSACTION_STATUS_URL, data)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	respInBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	var result GarynjaResponse
 	err = json.Unmarshal(respInBytes, &result)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	if result.Status != "SUCCESS" {
-		log.Fatal(err)
-	}
-	fmt.Println(result)
+	return &result, nil
+
 }
