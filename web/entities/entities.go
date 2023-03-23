@@ -23,6 +23,7 @@ type Transaction struct {
 	ResultDestination string    `json:"result_destination"`
 	ResultAmount      int       `json:"result_amount"`
 	ResultState       string    `json:"result_state"`
+	ResultReason      string    `json:"result_reason"`
 	IsChecked         bool      `json:"is_checked"`
 	Client            string    `json:"client"`
 }

@@ -15,9 +15,9 @@ CREATE TABLE transactions (
 	result_destination varchar(255) DEFAULT '',
 	result_amount bigint DEFAULT 0,
 	result_state varchar(255) DEFAULT '',
+	result_reason varchar(255) DEFAULT ''
 	is_checked boolean NOT NULL DEFAULT false,
 	client varchar(255) NOT NULL,
-	reason varchar(255) DEFAULT ''
 );
 
 CREATE TABLE users (
