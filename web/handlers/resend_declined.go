@@ -126,8 +126,8 @@ func ResendDeclinedTrxn(ctx *gin.Context) {
 			logger.Errorf("couldn't update database: %v, result: %v", err, result)
 		}
 		ctx.JSON(http.StatusOK, gin.H{
-			"error":   "transaction declined",
-			"message": "Resend transaction is again declined",
+			"success": true,
+			"message": "Transaction resend successfully",
 		})
 		return
 	}
