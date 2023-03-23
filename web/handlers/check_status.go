@@ -45,7 +45,6 @@ func CheckTrxnStatus(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
-		"transaction": trxn,
-		"status":      result,
+		"transaction": result,
 	})
 }
