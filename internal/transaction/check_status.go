@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -22,11 +21,11 @@ import (
 // hmac - hmac with shared key
 //
 // msg = <local-id>:<ts>:<username>
-func CheckStatus(localID string) {
+func CheckStatus(localID string) (*GarynjaResponse, error) {
 	// Get epoch time
 	epochTime, err := utility.GetEpoch()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	// Prepare ts, msg and request body
@@ -40,23 +39,21 @@ func CheckStatus(localID string) {
 
 	resp, err := http.PostForm(constants.TRANSACTION_STATUS_URL, data)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	respInBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	var result GarynjaResponse
 	err = json.Unmarshal(respInBytes, &result)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	if result.Status != "SUCCESS" {
-		log.Fatal(err)
-	}
-	fmt.Println(result)
+	return &result, nil
+
 }

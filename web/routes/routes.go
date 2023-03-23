@@ -23,6 +23,7 @@ func SetupRoutes() *gin.Engine {
 		api.POST("/transactions/:uuid", middlewares.Auth(), handlers.SendTransaction)
 		api.POST("/declined-transactions", middlewares.Auth(), handlers.ResendDeclinedTrxns)
 		api.POST("/declined-transactions/:uuid", middlewares.Auth(), handlers.ResendDeclinedTrxn)
+		api.GET("/check-transactions/:uuid", middlewares.Auth(), handlers.CheckTrxnStatus)
 
 		api.POST("/auth/login", handlers.Login)
 		api.POST("/auth/token", handlers.Token)
