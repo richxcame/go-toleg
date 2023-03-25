@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -26,12 +25,12 @@ import (
 // hmac - hmac with access token
 //
 // msg = <local-id>:<service>:<amount>:<destination>:<txn-ts>:<ts>:<username>
-func ForceAdd(amount, phone, localID, service string) {
+func ForceAdd(amount, phone, localID, service string) (*GarynjaResponse, error) {
 
 	// Get epoch time
 	epochTime, err := utility.GetEpoch()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	// Prepare request body
@@ -47,25 +46,23 @@ func ForceAdd(amount, phone, localID, service string) {
 		"hmac":        {hmacsha1.Generate(constants.ACCESS_TOKEN, msg)},
 	}
 
-	resp, err := http.PostForm(constants.CORRECT_DECLINED_URL, data)
+	resp, err := http.PostForm(constants.FORCE_ADD_URL, data)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	respInBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
+	fmt.Println(respInBytes)
 
 	var result GarynjaResponse
 	err = json.Unmarshal(respInBytes, &result)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	if result.Status != "SUCCESS" {
-		log.Fatal(err)
-	}
-	fmt.Println(result)
+	return &result, nil
 }
