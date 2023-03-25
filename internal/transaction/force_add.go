@@ -56,7 +56,6 @@ func ForceAdd(amount, phone, localID, service string) (*GarynjaResponse, error) 
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(respInBytes)
 
 	var result GarynjaResponse
 	err = json.Unmarshal(respInBytes, &result)
