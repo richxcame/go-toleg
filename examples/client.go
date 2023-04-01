@@ -2,13 +2,12 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
-	"time"
 
 	pb "gotoleg/rpc/gotoleg"
 
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -22,9 +21,11 @@ func init() {
 }
 
 func main() {
-	addr := os.Getenv("GOTOLEG_PORT")
+	gotolegIP := os.Getenv("GOTOLEG_IP")
+	gotolegPort := os.Getenv("GOTOLEG_PORT")
+
 	// Set up a connection to the server.
-	conn, err := grpc.Dial(fmt.Sprintf("localhost:%v", addr), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(gotolegIP+":"+gotolegPort, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -33,7 +34,7 @@ func main() {
 
 	// Contact the server and print out its response.
 	ctx := metadata.AppendToOutgoingContext(context.Background(), "api_key", os.Getenv("TEST_GOTOLEG_API_KEY"))
-	r, err := c.Add(ctx, &pb.TransactionRequest{LocalID: time.Now().String(), Service: "", Phone: os.Getenv("TEST_GOTOLEG_PHONE"), Amount: os.Getenv("TEST_GOTOLEG_AMOUNT")})
+	r, err := c.Add(ctx, &pb.TransactionRequest{LocalID: uuid.New().String(), Service: "", Phone: os.Getenv("TEST_GOTOLEG_PHONE"), Amount: os.Getenv("TEST_GOTOLEG_AMOUNT")})
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
