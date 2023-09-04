@@ -34,7 +34,7 @@ func main() {
 
 	// Contact the server and print out its response.
 	ctx := metadata.AppendToOutgoingContext(context.Background(), "api_key", os.Getenv("TEST_GOTOLEG_API_KEY"))
-	r, err := c.Add(ctx, &pb.TransactionRequest{LocalID: uuid.New().String(), Service: "", Phone: os.Getenv("TEST_GOTOLEG_PHONE"), Amount: os.Getenv("TEST_GOTOLEG_AMOUNT")})
+	r, err := c.Add(ctx, &pb.TransactionRequest{LocalID: uuid.New().String(), Service: "", Phone: os.Getenv("TEST_GOTOLEG_PHONE"), Amount: os.Getenv("TEST_GOTOLEG_AMOUNT"), Note: "test"})
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}

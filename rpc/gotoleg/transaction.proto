@@ -12,6 +12,7 @@ message TransactionRequest{
     string service = 2;
     string phone = 3;
     string amount = 4;
+    string note = 5;
 }
 
 message TransactionReply{
