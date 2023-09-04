@@ -48,7 +48,7 @@ func GetTransactions(ctx *gin.Context) {
 	var values []interface{}
 	var queries []string
 	for k, v := range urlQueries {
-		if arrs.Contains([]string{"uuid", "request_local_id", "request_service", "request_phone"}, k) {
+		if arrs.Contains([]string{"uuid", "request_local_id", "request_service", "request_phone", "note"}, k) {
 			str := ""
 			for _, v := range v {
 				str += v + "|"

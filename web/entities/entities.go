@@ -26,6 +26,7 @@ type Transaction struct {
 	ResultReason      string    `json:"result_reason"`
 	IsChecked         bool      `json:"is_checked"`
 	Client            string    `json:"client"`
+	Note              string    `json:"note"`
 }
 
 type User struct {
