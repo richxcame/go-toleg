@@ -72,13 +72,20 @@ func (s *Server) Add(ctx context.Context, in *pb.TransactionRequest) (*pb.Transa
 		return nil, err
 	}
 
+	mnt, err := strconv.ParseFloat(in.Amount, 64)
+	if err != nil {
+		logger.Error(err, in)
+		return nil, err
+	}
+	amount := strconv.Itoa(int(mnt))
+
 	// Prepare ts, msg and request body
 	ts := strconv.FormatInt(epochTime, 10)
 	msg := fmt.Sprintf("%s:%s:%s:%s:%s:%s:%s", in.LocalID, in.Service, in.Amount, in.Phone, ts, ts, constants.USERNAME)
 	data := url.Values{
 		"local-id":    {in.LocalID},
 		"service":     {in.Service},
-		"amount":      {in.Amount},
+		"amount":      {amount},
 		"destination": {in.Phone},
 		"txn-ts":      {ts},
 		"ts":          {ts},
