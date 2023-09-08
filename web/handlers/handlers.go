@@ -63,7 +63,7 @@ func GetTransactions(ctx *gin.Context) {
 	}
 	valuesWithPagination := append(values, offset, limit)
 
-	sqlStatement := "SELECT uuid, created_at, updated_at, request_local_id, request_service, request_phone, request_amount, status, error_code, error_msg, result_status, result_ref_num, result_service, result_destination, result_amount, result_state, result_reason is_checked, client FROM transactions"
+	sqlStatement := "SELECT uuid, created_at, updated_at, request_local_id, request_service, request_phone, request_amount, status, error_code, error_msg, result_status, result_ref_num, result_service, result_destination, result_amount, result_state, is_checked, client, note FROM transactions"
 	sqlFilters := ""
 	if len(queries) > 0 {
 		sqlFilters += " WHERE "
@@ -82,7 +82,7 @@ func GetTransactions(ctx *gin.Context) {
 	for rows.Next() {
 		var trxn entities.Transaction
 
-		if err := rows.Scan(&trxn.UUID, &trxn.CreatedAt, &trxn.UpdatedAt, &trxn.RequestLocalID, &trxn.RequestService, &trxn.RequestPhone, &trxn.RequestAmount, &trxn.Status, &trxn.ErrorCode, &trxn.ErrorMsg, &trxn.ResultStatus, &trxn.ResultRefNum, &trxn.ResultService, &trxn.ResultDestination, &trxn.ResultAmount, &trxn.ResultState, &trxn.ResultReason, &trxn.IsChecked, &trxn.Client); err != nil {
+		if err := rows.Scan(&trxn.UUID, &trxn.CreatedAt, &trxn.UpdatedAt, &trxn.RequestLocalID, &trxn.RequestService, &trxn.RequestPhone, &trxn.RequestAmount, &trxn.Status, &trxn.ErrorCode, &trxn.ErrorMsg, &trxn.ResultStatus, &trxn.ResultRefNum, &trxn.ResultService, &trxn.ResultDestination, &trxn.ResultAmount, &trxn.ResultState, &trxn.IsChecked, &trxn.Client, &trxn.Note); err != nil {
 			logger.Errorf("row scan error %v", err)
 		}
 		transactions = append(transactions, trxn)
