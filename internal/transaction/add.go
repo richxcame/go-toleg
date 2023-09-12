@@ -60,7 +60,15 @@ func (s *Server) Add(ctx context.Context, in *pb.TransactionRequest) (*pb.Transa
 		INSERT INTO transactions (uuid, created_at, updated_at, client, request_local_id, request_service, request_phone, request_amount, note)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		`
-	_, err := db.DB.Exec(context.Background(), sqlStatement, _uuid, time.Now(), time.Now(), client, in.LocalID, in.Service, in.Phone, in.Amount, in.Note)
+
+	mnt, err := strconv.ParseFloat(in.Amount, 64)
+	if err != nil {
+		logger.Error(err, in)
+		return nil, err
+	}
+	amount := strconv.Itoa(int(mnt))
+
+	_, err = db.DB.Exec(context.Background(), sqlStatement, _uuid, time.Now(), time.Now(), client, in.LocalID, in.Service, in.Phone, amount, in.Note)
 	if err != nil {
 		logger.Error(err, in)
 	}
@@ -72,16 +80,9 @@ func (s *Server) Add(ctx context.Context, in *pb.TransactionRequest) (*pb.Transa
 		return nil, err
 	}
 
-	mnt, err := strconv.ParseFloat(in.Amount, 64)
-	if err != nil {
-		logger.Error(err, in)
-		return nil, err
-	}
-	amount := strconv.Itoa(int(mnt))
-
 	// Prepare ts, msg and request body
 	ts := strconv.FormatInt(epochTime, 10)
-	msg := fmt.Sprintf("%s:%s:%s:%s:%s:%s:%s", in.LocalID, in.Service, in.Amount, in.Phone, ts, ts, constants.USERNAME)
+	msg := fmt.Sprintf("%s:%s:%s:%s:%s:%s:%s", in.LocalID, in.Service, amount, in.Phone, ts, ts, constants.USERNAME)
 	data := url.Values{
 		"local-id":    {in.LocalID},
 		"service":     {in.Service},
