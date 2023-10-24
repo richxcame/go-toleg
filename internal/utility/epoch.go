@@ -1,10 +1,10 @@
 package utility
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"io"
 	"net/http"
+	"time"
 
 	"gotoleg/internal/constants"
 )
@@ -14,8 +14,10 @@ import (
 //
 // GET /api/epoch
 func GetEpoch() (int64, error) {
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	resp, err := http.Get(constants.EPOCH_URL)
+	client := http.Client{
+		Timeout: 10 * time.Second,
+	}
+	resp, err := client.Get(constants.EPOCH_URL)
 	if err != nil {
 		return 0, err
 	}

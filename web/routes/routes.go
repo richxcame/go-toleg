@@ -18,6 +18,7 @@ func SetupRoutes() *gin.Engine {
 	api := routes.Group("/api")
 
 	{
+		api.POST("/trxns", handlers.AddTransaction)
 		api.GET("/transactions", middlewares.Auth(), handlers.GetTransactions)
 		api.POST("/transactions", middlewares.Auth(), handlers.SendTransactions)
 		api.POST("/transactions/:uuid", middlewares.Auth(), handlers.SendTransaction)
