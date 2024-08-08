@@ -29,6 +29,7 @@ type Transaction struct {
 	Amount  string `json:"amount"`
 	Note    string `json:"note"`
 	ApiKey  string `json:"api_key"`
+	Reason  string `json:"reason"`
 }
 
 func AddTransaction(ctx *gin.Context) {
@@ -70,10 +71,10 @@ func AddTransaction(ctx *gin.Context) {
 	// Insert request to database
 	_uuid := uuid.New().String()
 	sqlStatement := `
-		INSERT INTO transactions (uuid, created_at, updated_at, client, request_local_id, request_service, request_phone, request_amount, note)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO transactions (uuid, created_at, updated_at, client, request_local_id, request_service, request_phone, request_amount, note, reason)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		`
-	_, err = db.DB.Exec(context.Background(), sqlStatement, _uuid, time.Now(), time.Now(), client, trxn.LocalID, trxn.Service, trxn.Phone, amount, trxn.Note)
+	_, err = db.DB.Exec(context.Background(), sqlStatement, _uuid, time.Now(), time.Now(), client, trxn.LocalID, trxn.Service, trxn.Phone, amount, trxn.Note, trxn.Reason)
 	if err != nil {
 		logger.Errorf("Couldn't save request to database: %v", err.Error())
 	}
