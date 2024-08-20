@@ -16,4 +16,4 @@ build:
 buildlinux:
 	@echo "Started building..."
 	@env GOOS=linux GOARCH=amd64 go build -o ./bin/gotoleg
-	@echo "Done." 
+	@echo "Done."
