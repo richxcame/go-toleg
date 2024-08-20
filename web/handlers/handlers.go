@@ -10,6 +10,7 @@ import (
 	"gotoleg/web/helpers"
 	"gotoleg/web/middlewares"
 	"net/http"
+	"net/http/httptest"
 	"strconv"
 	"strings"
 	"time"
@@ -202,4 +203,17 @@ func Token(c *gin.Context) {
 
 	tokens.RefreshToken = token.RefreshToken
 	c.JSON(http.StatusOK, tokens)
+}
+
+func CronJob(interval time.Duration) {
+	ticker := time.NewTicker(1 * interval)
+	defer ticker.Stop()
+	for range ticker.C {
+		// Run the function every time the ticker ticks
+		w := httptest.NewRecorder()
+		gin.SetMode(gin.TestMode)
+		ctx, _ := gin.CreateTestContext(w)
+		SendTransactions(ctx)
+		ResendDeclinedTrxns(ctx)
+	}
 }

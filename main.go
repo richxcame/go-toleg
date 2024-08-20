@@ -5,11 +5,13 @@ import (
 	"log"
 	"net"
 	"os"
+	"time"
 
 	"gotoleg/internal/db"
 	"gotoleg/internal/transaction"
 
 	pb "gotoleg/rpc/gotoleg"
+	"gotoleg/web/handlers"
 	"gotoleg/web/routes"
 
 	_ "github.com/joho/godotenv/autoload"
@@ -17,6 +19,10 @@ import (
 )
 
 func main() {
+	// run cron job, for declined and empty status transactions
+	interval := time.Hour
+	go handlers.CronJob(interval)
+
 	// Close db pool
 	pool := db.CreateDB()
 	defer pool.Close()
