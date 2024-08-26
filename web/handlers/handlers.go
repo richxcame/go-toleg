@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"fmt"
 	"gotoleg/internal/db"
 	"gotoleg/pkg/arrs"
@@ -24,12 +23,13 @@ const GetTransactionsQuery = `SELECT uuid, created_at, updated_at, request_local
 const GetTransactionsCountQuery = `SELECT COUNT(*) FROM transactions`
 const GetUserQuery = `SELECT username, password FROM users WHERE username = $1`
 
-func GetTransactions(ctx *gin.Context) {
-	offsetQuery := ctx.DefaultQuery("offset", "0")
-	limitQuery := ctx.DefaultQuery("limit", "20")
+func GetTransactions(c *gin.Context) {
+	ctx := c.Request.Context()
+	offsetQuery := c.DefaultQuery("offset", "0")
+	limitQuery := c.DefaultQuery("limit", "20")
 	offset, err := strconv.Atoi(offsetQuery)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   err.Error(),
 			"message": "offset value must be convertable to integer",
 		})
@@ -37,14 +37,14 @@ func GetTransactions(ctx *gin.Context) {
 	}
 	limit, err := strconv.Atoi(limitQuery)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   err.Error(),
 			"message": "limit value must be convertable to integer",
 		})
 		return
 	}
 
-	urlQueries := ctx.Request.URL.Query()
+	urlQueries := c.Request.URL.Query()
 	index := 0
 	var values []interface{}
 	var queries []string
@@ -73,7 +73,7 @@ func GetTransactions(ctx *gin.Context) {
 	sqlStatement += sqlFilters
 	sqlStatement += " ORDER BY created_at DESC "
 	sqlStatement += fmt.Sprintf(" offset $%v limit $%v", index+1, index+2)
-	rows, err := db.DB.Query(context.Background(), sqlStatement, valuesWithPagination...)
+	rows, err := db.DB.Query(ctx, sqlStatement, valuesWithPagination...)
 	if err != nil {
 		logger.Error(err)
 	}
@@ -90,9 +90,9 @@ func GetTransactions(ctx *gin.Context) {
 	}
 
 	totalCount := 0
-	err = db.DB.QueryRow(context.Background(), "SELECT COUNT(*) FROM transactions"+sqlFilters, values...).Scan(&totalCount)
+	err = db.DB.QueryRow(ctx, "SELECT COUNT(*) FROM transactions"+sqlFilters, values...).Scan(&totalCount)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
 			"message": "Couldn't count total number of transactions",
 		})
@@ -100,7 +100,7 @@ func GetTransactions(ctx *gin.Context) {
 	}
 
 	// Get all distinct status strings including filters
-	statusRows, err := db.DB.Query(context.Background(), "SELECT DISTINCT(status) from transactions"+sqlFilters, values...)
+	statusRows, err := db.DB.Query(ctx, "SELECT DISTINCT(status) from transactions"+sqlFilters, values...)
 	if err != nil {
 		logger.Error(err)
 	}
@@ -115,7 +115,7 @@ func GetTransactions(ctx *gin.Context) {
 		statuses = append(statuses, val[0])
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"transactions": transactions,
 		"statuses":     statuses,
 		"offset":       offset,
@@ -124,10 +124,11 @@ func GetTransactions(ctx *gin.Context) {
 	})
 }
 
-func Login(ctx *gin.Context) {
+func Login(c *gin.Context) {
+	ctx := c.Request.Context()
 	var user entities.User
-	if err := ctx.BindJSON(&user); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
+	if err := c.BindJSON(&user); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   err.Error(),
 			"message": "Couln't parse the request to user",
 		})
@@ -135,9 +136,9 @@ func Login(ctx *gin.Context) {
 	}
 
 	var dUser entities.User
-	err := db.DB.QueryRow(context.Background(), GetUserQuery, user.Username).Scan(&dUser.Username, &dUser.Password)
+	err := db.DB.QueryRow(ctx, GetUserQuery, user.Username).Scan(&dUser.Username, &dUser.Password)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   err.Error(),
 			"message": "Couldn't find user",
 		})
@@ -145,7 +146,7 @@ func Login(ctx *gin.Context) {
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(dUser.Password), []byte(user.Password)); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "wrong_password",
 			"message": "Invalid password",
 		})
@@ -154,14 +155,14 @@ func Login(ctx *gin.Context) {
 
 	tokens, err := helpers.GenerateJWT(user.Username)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
 			"message": "Coulnd't create token",
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"access_token":  tokens.AccessToken,
 		"refresh_token": tokens.RefreshToken,
 	})
@@ -205,15 +206,20 @@ func Token(c *gin.Context) {
 	c.JSON(http.StatusOK, tokens)
 }
 
-func CronJob(interval time.Duration) {
+func RunTransactionCronJob(interval time.Duration) {
 	ticker := time.NewTicker(1 * interval)
+
+	logger.Fatal("starting cron job")
 	defer ticker.Stop()
 	for range ticker.C {
 		// Run the function every time the ticker ticks
+		logger.Fatal("running cron job")
 		w := httptest.NewRecorder()
 		gin.SetMode(gin.TestMode)
-		ctx, _ := gin.CreateTestContext(w)
-		SendTransactions(ctx)
-		ResendDeclinedTrxns(ctx)
+		c, _ := gin.CreateTestContext(w)
+		SendTransactions(c)
+		ResendDeclinedTrxns(c)
+
+		logger.Fatal("done running cron job")
 	}
 }

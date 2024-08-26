@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"gotoleg/internal/constants"
@@ -21,8 +20,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SendTransactions(ctx *gin.Context) {
-	rows, err := db.DB.Query(context.Background(), "SELECT * FROM transactions where status = '' AND result_status=''")
+func SendTransactions(c *gin.Context) {
+	ctx := c.Request.Context()
+	rows, err := db.DB.Query(ctx, "SELECT * FROM transactions where status = '' AND result_status='' and created_at >(now()-interval '2 day')")
 	if err != nil {
 		logger.Error(err)
 	}
@@ -52,7 +52,7 @@ func SendTransactions(ctx *gin.Context) {
 			errorCount++
 		}
 	}
-	ctx.JSON(200, gin.H{
+	c.JSON(200, gin.H{
 		"sucess_count": sucessCount,
 		"error_count":  errorCount,
 	})
@@ -60,11 +60,12 @@ func SendTransactions(ctx *gin.Context) {
 
 // SendTransaction resends money if status or result_status is equal to empty string
 // For example: If couldn't get response from epoch time request, it might be the transaction didn't send to client
-func SendTransaction(ctx *gin.Context) {
+func SendTransaction(c *gin.Context) {
 	// Get UUID from URL param
-	uuid, ok := ctx.Params.Get("uuid")
+	ctx := c.Request.Context()
+	uuid, ok := c.Params.Get("uuid")
 	if !ok {
-		ctx.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "uuid is required",
 			"message": "Coulnd't find UUID",
 		})
@@ -73,10 +74,10 @@ func SendTransaction(ctx *gin.Context) {
 
 	// Find the transaction with given UUID
 	var trxn entities.Transaction
-	err := db.DB.QueryRow(context.Background(), "SELECT * FROM transactions where uuid = $1", uuid).Scan(&trxn.UUID, &trxn.CreatedAt, &trxn.UpdatedAt, &trxn.RequestLocalID, &trxn.RequestService, &trxn.RequestPhone, &trxn.RequestAmount, &trxn.Status, &trxn.ErrorCode, &trxn.ErrorMsg, &trxn.ResultStatus, &trxn.ResultRefNum, &trxn.ResultService, &trxn.ResultDestination, &trxn.ResultAmount, &trxn.ResultState, &trxn.IsChecked, &trxn.Client)
+	err := db.DB.QueryRow(ctx, "SELECT * FROM transactions where uuid = $1", uuid).Scan(&trxn.UUID, &trxn.CreatedAt, &trxn.UpdatedAt, &trxn.RequestLocalID, &trxn.RequestService, &trxn.RequestPhone, &trxn.RequestAmount, &trxn.Status, &trxn.ErrorCode, &trxn.ErrorMsg, &trxn.ResultStatus, &trxn.ResultRefNum, &trxn.ResultService, &trxn.ResultDestination, &trxn.ResultAmount, &trxn.ResultState, &trxn.IsChecked, &trxn.Client)
 	if err != nil {
 		logger.Error(err)
-		ctx.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   err.Error(),
 			"message": "Couldn't find the transaction",
 		})
@@ -85,7 +86,7 @@ func SendTransaction(ctx *gin.Context) {
 
 	// Check if transaction is already sent
 	if trxn.Status != "" || trxn.ResultStatus != "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "transaction already sent",
 			"message": "The transaction had been already sent",
 		})
@@ -97,7 +98,7 @@ func SendTransaction(ctx *gin.Context) {
 	epochTime, err := utility.GetEpoch()
 	if err != nil {
 		logger.Errorf("epoch time get error: %v", err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
 			"message": "Couldn't get epoch time",
 		})
@@ -121,7 +122,7 @@ func SendTransaction(ctx *gin.Context) {
 	resp, err := http.PostForm(constants.ADD_TRANSACTION_URL, data)
 	if err != nil {
 		logger.Error(err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
 			"message": "Couldn't post transaction's data",
 		})
@@ -133,7 +134,7 @@ func SendTransaction(ctx *gin.Context) {
 	respInBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		logger.Error(err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
 			"message": "Couldn't parse response bytes",
 		})
@@ -145,7 +146,7 @@ func SendTransaction(ctx *gin.Context) {
 	err = json.Unmarshal(respInBytes, &result)
 	if err != nil {
 		logger.Error(err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
 			"message": "Couldn't parse from bytes to struct",
 		})
@@ -154,13 +155,13 @@ func SendTransaction(ctx *gin.Context) {
 
 	// Update after send money
 	const sqlStr = `UPDATE transactions SET status=$1, error_code=$2, error_msg=$3, result_status=$4, result_ref_num=$5, result_service=$6, result_destination=$7, result_amount=$8, result_state=$9, updated_at=$10 WHERE uuid=$11`
-	_, err = db.DB.Exec(context.Background(), sqlStr, result.Status, result.ErrorCode, result.ErrorMessage, result.Result.Status, result.Result.RefNum, result.Result.Service, result.Result.Destination, result.Result.Amount, result.Result.State, time.Now(), trxn.UUID)
+	_, err = db.DB.Exec(ctx, sqlStr, result.Status, result.ErrorCode, result.ErrorMessage, result.Result.Status, result.Result.RefNum, result.Result.Service, result.Result.Destination, result.Result.Amount, result.Result.State, time.Now(), trxn.UUID)
 	if err != nil {
 		logger.Errorf("couldn't update database: %v, result: %v", err, result)
 	}
 
 	// Send success result
-	ctx.JSON(http.StatusOK, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Transaction has been sent",
 	})

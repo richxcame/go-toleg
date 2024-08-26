@@ -10,28 +10,36 @@ import (
 
 func SetupRoutes() *gin.Engine {
 
-	routes := gin.Default()
+	router := gin.Default()
+	router.Use(cors.Default())
 
-	// Cors defualt config
-	routes.Use(cors.Default())
-
-	api := routes.Group("/api")
+	api := router.Group("/api")
 
 	{
-		api.POST("/trxns", handlers.AddTransaction)
-		api.GET("/transactions", middlewares.Auth(), handlers.GetTransactions)
-		api.POST("/transactions", middlewares.Auth(), handlers.SendTransactions)
-		api.POST("/transactions/:uuid", middlewares.Auth(), handlers.SendTransaction)
-		api.POST("/declined-transactions", middlewares.Auth(), handlers.ResendDeclinedTrxns)
-		api.POST("/declined-transactions/:uuid", middlewares.Auth(), handlers.ResendDeclinedTrxn)
-		api.GET("/check-transactions/:uuid", middlewares.Auth(), handlers.CheckTrxnStatus)
-		api.POST("/force-add-transactions/:uuid", middlewares.Auth(), handlers.ForceAddDeclinedTransaction)
-		api.POST("/force-add-transactions", middlewares.Auth(), handlers.ForceAddDeclinedTransactions)
-
-		api.POST("/auth/login", handlers.Login)
-		api.POST("/auth/token", handlers.Token)
+		setupTransactionRoutes(api)
+		setupAuthRoutes(api)
 	}
 
-	return routes
+	return router
+}
+
+func setupTransactionRoutes(router *gin.RouterGroup) {
+
+	router.POST("/trxns", handlers.AddTransaction)
+	router.GET("/transactions", middlewares.Auth(), handlers.GetTransactions)
+	router.POST("/transactions", middlewares.Auth(), handlers.SendTransactions)
+	router.POST("/transactions/:uuid", middlewares.Auth(), handlers.SendTransaction)
+	router.POST("/declined-transactions", middlewares.Auth(), handlers.ResendDeclinedTrxns)
+	router.POST("/declined-transactions/:uuid", middlewares.Auth(), handlers.ResendDeclinedTrxn)
+	router.GET("/check-transactions/:uuid", middlewares.Auth(), handlers.CheckTrxnStatus)
+	router.POST("/force-add-transactions/:uuid", middlewares.Auth(), handlers.ForceAddDeclinedTransaction)
+	router.POST("/force-add-transactions", middlewares.Auth(), handlers.ForceAddDeclinedTransactions)
+
+}
+
+func setupAuthRoutes(router *gin.RouterGroup) {
+
+	router.POST("/auth/login", handlers.Login)
+	router.POST("/auth/token", handlers.Token)
 
 }

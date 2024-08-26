@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"gotoleg/internal/db"
 	"gotoleg/internal/transaction"
 	"gotoleg/pkg/logger"
@@ -13,8 +12,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func ResendDeclinedTrxns(ctx *gin.Context) {
-	rows, err := db.DB.Query(context.Background(), "SELECT * FROM transactions where status = 'ERROR' AND result_status='DECLINED'")
+func ResendDeclinedTrxns(c *gin.Context) {
+	ctx := c.Request.Context()
+	rows, err := db.DB.Query(ctx, "SELECT * FROM transactions where status = 'ERROR' AND result_status='DECLINED'")
 	if err != nil {
 		logger.Error(err)
 	}
@@ -35,16 +35,16 @@ func ResendDeclinedTrxns(ctx *gin.Context) {
 	for _, v := range transactions {
 		w := httptest.NewRecorder()
 		gin.SetMode(gin.TestMode)
-		ctx, _ := gin.CreateTestContext(w)
-		ctx.Params = []gin.Param{{Key: "uuid", Value: v.UUID.String()}}
-		ResendDeclinedTrxn(ctx)
+		c, _ := gin.CreateTestContext(w)
+		c.Params = []gin.Param{{Key: "uuid", Value: v.UUID.String()}}
+		ResendDeclinedTrxn(c)
 		if w.Result().StatusCode == 200 {
 			sucessCount++
 		} else {
 			errorCount++
 		}
 	}
-	ctx.JSON(200, gin.H{
+	c.JSON(200, gin.H{
 		"sucess_count": sucessCount,
 		"error_count":  errorCount,
 	})
@@ -52,11 +52,12 @@ func ResendDeclinedTrxns(ctx *gin.Context) {
 
 // ResendDeclinedTrxn resends money if status is ERROR or result_status is DECLINED
 // For example: If balance in account, when balance gets ready resend money to all clients
-func ResendDeclinedTrxn(ctx *gin.Context) {
+func ResendDeclinedTrxn(c *gin.Context) {
+	ctx := c.Request.Context()
 	// Get UUID from URL param
-	uuid, ok := ctx.Params.Get("uuid")
+	uuid, ok := c.Params.Get("uuid")
 	if !ok {
-		ctx.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "uuid is required",
 			"message": "Coulnd't find UUID",
 		})
@@ -65,10 +66,10 @@ func ResendDeclinedTrxn(ctx *gin.Context) {
 
 	// Find the transaction with given UUID
 	var trxn entities.Transaction
-	err := db.DB.QueryRow(context.Background(), "SELECT uuid, created_at, updated_at, request_local_id, request_service, request_phone, request_amount, status, error_code, error_msg, result_status, result_ref_num, result_service, result_destination, result_amount, result_state, result_reason, is_checked, client FROM transactions where uuid = $1", uuid).Scan(&trxn.UUID, &trxn.CreatedAt, &trxn.UpdatedAt, &trxn.RequestLocalID, &trxn.RequestService, &trxn.RequestPhone, &trxn.RequestAmount, &trxn.Status, &trxn.ErrorCode, &trxn.ErrorMsg, &trxn.ResultStatus, &trxn.ResultRefNum, &trxn.ResultService, &trxn.ResultDestination, &trxn.ResultAmount, &trxn.ResultState, &trxn.ResultReason, &trxn.IsChecked, &trxn.Client)
+	err := db.DB.QueryRow(ctx, "SELECT uuid, created_at, updated_at, request_local_id, request_service, request_phone, request_amount, status, error_code, error_msg, result_status, result_ref_num, result_service, result_destination, result_amount, result_state, result_reason, is_checked, client FROM transactions where uuid = $1", uuid).Scan(&trxn.UUID, &trxn.CreatedAt, &trxn.UpdatedAt, &trxn.RequestLocalID, &trxn.RequestService, &trxn.RequestPhone, &trxn.RequestAmount, &trxn.Status, &trxn.ErrorCode, &trxn.ErrorMsg, &trxn.ResultStatus, &trxn.ResultRefNum, &trxn.ResultService, &trxn.ResultDestination, &trxn.ResultAmount, &trxn.ResultState, &trxn.ResultReason, &trxn.IsChecked, &trxn.Client)
 	if err != nil {
 		logger.Error(err)
-		ctx.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   err.Error(),
 			"message": "Couldn't find the transaction",
 		})
@@ -77,7 +78,7 @@ func ResendDeclinedTrxn(ctx *gin.Context) {
 
 	// Check if transaction is declined
 	if trxn.Status != "ERROR" || trxn.ResultStatus != "DECLINED" {
-		ctx.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "the transaction is not declined",
 			"message": "The transaction isn't declined",
 		})
@@ -87,7 +88,7 @@ func ResendDeclinedTrxn(ctx *gin.Context) {
 	result, err := transaction.ResendDeclined(trxn.RequestLocalID)
 	if err != nil {
 		logger.Error(err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
 			"message": "Couldn't resend declined transaction",
 		})
@@ -97,42 +98,42 @@ func ResendDeclinedTrxn(ctx *gin.Context) {
 
 	// Update after resend money
 	if result.ErrorCode == 404 {
-		ctx.JSON(http.StatusNotFound, gin.H{
+		c.JSON(http.StatusNotFound, gin.H{
 			"error":   "declined trxn not found",
 			"message": "Couldn't find the declined transaction",
 		})
 		return
 	} else if result.ErrorCode == 409 {
-		ctx.JSON(http.StatusConflict, gin.H{
+		c.JSON(http.StatusConflict, gin.H{
 			"error":   "transaction is not declined",
 			"message": "The transaction is not declined",
 		})
 		return
 	} else if result.ErrorCode == 401 {
 		const sqlStr = `UPDATE transactions SET status=$1, error_code=$2, error_msg=$3, result_status=$4, result_ref_num=$5, result_reason=$6, updated_at=$7 WHERE uuid=$8`
-		_, err = db.DB.Exec(context.Background(), sqlStr, result.Status, result.ErrorCode, result.ErrorMessage, result.Result.Status, result.Result.RefNum, result.Result.Reason, time.Now(), trxn.UUID)
+		_, err = db.DB.Exec(ctx, sqlStr, result.Status, result.ErrorCode, result.ErrorMessage, result.Result.Status, result.Result.RefNum, result.Result.Reason, time.Now(), trxn.UUID)
 		if err != nil {
 			logger.Errorf("couldn't update database: %v, result: %v", err, result)
 		}
-		ctx.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "transaction declined",
 			"message": "Resend transaction is again declined",
 		})
 		return
 	} else if result.Status == "SUCCESS" {
 		const sqlStr = `UPDATE transactions SET status=$1, error_code=$2, error_msg=$3, result_status=$4, result_ref_num=$5, result_service=$6, result_destination=$7, result_amount=$8, result_state=$9, updated_at=$10 WHERE uuid=$11`
-		_, err = db.DB.Exec(context.Background(), sqlStr, result.Status, result.ErrorCode, result.ErrorMessage, "SUCCESS", result.Result.RefNum, result.Result.Service, result.Result.Destination, result.Result.Amount, result.Result.State, time.Now(), trxn.UUID)
+		_, err = db.DB.Exec(ctx, sqlStr, result.Status, result.ErrorCode, result.ErrorMessage, "SUCCESS", result.Result.RefNum, result.Result.Service, result.Result.Destination, result.Result.Amount, result.Result.State, time.Now(), trxn.UUID)
 		if err != nil {
 			logger.Errorf("couldn't update database: %v, result: %v", err, result)
 		}
-		ctx.JSON(http.StatusOK, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"success": true,
 			"message": "Transaction resend successfully",
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusInternalServerError, gin.H{
+	c.JSON(http.StatusInternalServerError, gin.H{
 		"success": false,
 		"message": "Got uknown state",
 	})

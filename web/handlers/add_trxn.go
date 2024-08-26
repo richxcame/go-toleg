@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"gotoleg/internal/config"
@@ -32,13 +31,14 @@ type Transaction struct {
 	Reason  string `json:"reason"`
 }
 
-func AddTransaction(ctx *gin.Context) {
+func AddTransaction(c *gin.Context) {
+	ctx := c.Request.Context()
 	// bind request body
 	var trxn Transaction
-	err := ctx.BindJSON(&trxn)
+	err := c.BindJSON(&trxn)
 	if err != nil {
 		logger.Errorf("couldn't bind request body: %v", err.Error())
-		ctx.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   err.Error(),
 			"message": "Couldn't bind request body",
 		})
@@ -49,7 +49,7 @@ func AddTransaction(ctx *gin.Context) {
 	client, hasInList := arrs.HasMapWithKey(config.Clients, trxn.ApiKey)
 	if !hasInList {
 		logger.Errorf("wrong api_key: %v, %v", trxn, client)
-		ctx.JSON(http.StatusUnauthorized, gin.H{
+		c.JSON(http.StatusUnauthorized, gin.H{
 			"error":   "invalid_api_key",
 			"message": "API key is not valid",
 		})
@@ -60,7 +60,7 @@ func AddTransaction(ctx *gin.Context) {
 	mnt, err := strconv.ParseFloat(trxn.Amount, 64)
 	if err != nil {
 		logger.Errorf("couldn't parse request amount to float: %v", err.Error())
-		ctx.JSON(http.StatusUnauthorized, gin.H{
+		c.JSON(http.StatusUnauthorized, gin.H{
 			"error":   err.Error(),
 			"message": "Couldn't convert request amount to float",
 		})
@@ -74,7 +74,7 @@ func AddTransaction(ctx *gin.Context) {
 		INSERT INTO transactions (uuid, created_at, updated_at, client, request_local_id, request_service, request_phone, request_amount, note, reason)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		`
-	_, err = db.DB.Exec(context.Background(), sqlStatement, _uuid, time.Now(), time.Now(), client, trxn.LocalID, trxn.Service, trxn.Phone, amount, trxn.Note, trxn.Reason)
+	_, err = db.DB.Exec(ctx, sqlStatement, _uuid, time.Now(), time.Now(), client, trxn.LocalID, trxn.Service, trxn.Phone, amount, trxn.Note, trxn.Reason)
 	if err != nil {
 		logger.Errorf("Couldn't save request to database: %v", err.Error())
 	}
@@ -83,7 +83,7 @@ func AddTransaction(ctx *gin.Context) {
 	epochTime, err := utility.GetEpoch()
 	if err != nil {
 		logger.Error("Couldn't get epoch time: %v", err.Error())
-		ctx.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
 			"message": "Coudn't get epoch time",
 		})
@@ -110,7 +110,7 @@ func AddTransaction(ctx *gin.Context) {
 	resp, err := httpClient.PostForm(constants.ADD_TRANSACTION_URL, data)
 	if err != nil {
 		logger.Errorf("Couldn't send transaction: %v", err.Error())
-		ctx.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
 			"message": "Couldn't send transaction",
 		})
@@ -122,7 +122,7 @@ func AddTransaction(ctx *gin.Context) {
 	respInBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		logger.Error("Couldn't read response body: %v", err.Error())
-		ctx.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
 			"message": "Couldn't read response body",
 		})
@@ -134,7 +134,7 @@ func AddTransaction(ctx *gin.Context) {
 	err = json.Unmarshal(respInBytes, &result)
 	if err != nil {
 		logger.Errorf("Couldn't unmarshall response: %v", err.Error())
-		ctx.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
 			"message": "Couldn't read response body",
 		})
@@ -143,12 +143,12 @@ func AddTransaction(ctx *gin.Context) {
 
 	// update the transaction
 	const sqlStr = `UPDATE transactions SET status=$1, error_code=$2, error_msg=$3, result_status=$4, result_ref_num=$5, result_service=$6, result_destination=$7, result_amount=$8, result_state=$9, updated_at=$10 WHERE uuid=$11`
-	_, err = db.DB.Exec(context.Background(), sqlStr, result.Status, result.ErrorCode, result.ErrorMessage, result.Result.Status, result.Result.RefNum, result.Result.Service, result.Result.Destination, result.Result.Amount, result.Result.State, time.Now(), _uuid)
+	_, err = db.DB.Exec(ctx, sqlStr, result.Status, result.ErrorCode, result.ErrorMessage, result.Result.Status, result.Result.RefNum, result.Result.Service, result.Result.Destination, result.Result.Amount, result.Result.State, time.Now(), _uuid)
 	if err != nil {
 		logger.Errorf("Couldn't update the transaction: %v", err.Error())
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"status":  true,
 		"message": "Transaction added successfully",
 		"data":    result,
