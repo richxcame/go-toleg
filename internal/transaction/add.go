@@ -38,6 +38,12 @@ import (
 //
 // msg = <local-id>:<service>:<amount>:<destination>:<txn-ts>:<ts>:<username>
 func (s *Server) Add(ctx context.Context, in *pb.TransactionRequest) (*pb.TransactionReply, error) {
+	tx, err := db.DB.Begin(ctx)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
 	// Get metadata and api_key from it
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
@@ -68,7 +74,7 @@ func (s *Server) Add(ctx context.Context, in *pb.TransactionRequest) (*pb.Transa
 	}
 	amount := strconv.Itoa(int(mnt))
 
-	_, err = db.DB.Exec(ctx, sqlStatement, _uuid, time.Now(), time.Now(), client, in.LocalID, in.Service, in.Phone, amount, in.Note)
+	_, err = tx.Exec(ctx, sqlStatement, _uuid, time.Now(), time.Now(), client, in.LocalID, in.Service, in.Phone, amount, in.Note)
 	if err != nil {
 		logger.Error(err, in)
 	}
@@ -114,9 +120,15 @@ func (s *Server) Add(ctx context.Context, in *pb.TransactionRequest) (*pb.Transa
 	}
 
 	const sqlStr = `UPDATE transactions SET status=$1, error_code=$2, error_msg=$3, result_status=$4, result_ref_num=$5, result_service=$6, result_destination=$7, result_amount=$8, result_state=$9, updated_at=$10 WHERE uuid=$11`
-	_, err = db.DB.Exec(ctx, sqlStr, result.Status, result.ErrorCode, result.ErrorMessage, result.Result.Status, result.Result.RefNum, result.Result.Service, result.Result.Destination, result.Result.Amount, result.Result.State, time.Now(), _uuid)
+	_, err = tx.Exec(ctx, sqlStr, result.Status, result.ErrorCode, result.ErrorMessage, result.Result.Status, result.Result.RefNum, result.Result.Service, result.Result.Destination, result.Result.Amount, result.Result.State, time.Now(), _uuid)
 	if err != nil {
 		logger.Error(err, in)
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		logger.Error(err, in)
+		return nil, err
 	}
 
 	return &pb.TransactionReply{

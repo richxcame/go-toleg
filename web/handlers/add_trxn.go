@@ -32,10 +32,20 @@ type Transaction struct {
 }
 
 func AddTransaction(c *gin.Context) {
+	tx, err := db.DB.Begin(c.Request.Context())
+	if err != nil {
+		logger.Errorf("couldn't start transaction: %v", err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   err.Error(),
+			"message": "Couldn't start transaction",
+		})
+		return
+	}
+	defer tx.Rollback(c.Request.Context())
 	ctx := c.Request.Context()
 	// bind request body
 	var trxn Transaction
-	err := c.BindJSON(&trxn)
+	err = c.BindJSON(&trxn)
 	if err != nil {
 		logger.Errorf("couldn't bind request body: %v", err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -74,7 +84,7 @@ func AddTransaction(c *gin.Context) {
 		INSERT INTO transactions (uuid, created_at, updated_at, client, request_local_id, request_service, request_phone, request_amount, note, reason)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		`
-	_, err = db.DB.Exec(ctx, sqlStatement, _uuid, time.Now(), time.Now(), client, trxn.LocalID, trxn.Service, trxn.Phone, amount, trxn.Note, trxn.Reason)
+	_, err = tx.Exec(ctx, sqlStatement, _uuid, time.Now(), time.Now(), client, trxn.LocalID, trxn.Service, trxn.Phone, amount, trxn.Note, trxn.Reason)
 	if err != nil {
 		logger.Errorf("Couldn't save request to database: %v", err.Error())
 	}
@@ -143,9 +153,20 @@ func AddTransaction(c *gin.Context) {
 
 	// update the transaction
 	const sqlStr = `UPDATE transactions SET status=$1, error_code=$2, error_msg=$3, result_status=$4, result_ref_num=$5, result_service=$6, result_destination=$7, result_amount=$8, result_state=$9, updated_at=$10 WHERE uuid=$11`
-	_, err = db.DB.Exec(ctx, sqlStr, result.Status, result.ErrorCode, result.ErrorMessage, result.Result.Status, result.Result.RefNum, result.Result.Service, result.Result.Destination, result.Result.Amount, result.Result.State, time.Now(), _uuid)
+	_, err = tx.Exec(ctx, sqlStr, result.Status, result.ErrorCode, result.ErrorMessage, result.Result.Status, result.Result.RefNum, result.Result.Service, result.Result.Destination, result.Result.Amount, result.Result.State, time.Now(), _uuid)
 	if err != nil {
 		logger.Errorf("Couldn't update the transaction: %v", err.Error())
+	}
+
+	// Commit the transaction
+	err = tx.Commit(ctx)
+	if err != nil {
+		logger.Errorf("Couldn't commit transaction: %v", err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   err.Error(),
+			"message": "Couldn't commit transaction",
+		})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
