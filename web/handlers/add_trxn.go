@@ -45,6 +45,10 @@ func AddTransaction(ctx *gin.Context) {
 		return
 	}
 
+	if trxn.Service == "" {
+		trxn.Service = "tmcell"
+	}
+
 	// validate api key
 	client, hasInList := arrs.HasMapWithKey(config.Clients, trxn.ApiKey)
 	if !hasInList {
